@@ -1,0 +1,71 @@
+<div class="card">
+  <div class="week-nav">
+    <a href="/weekly?date=<%= prevWeek %>">&larr; prev week</a>
+    <strong><%= weekLabel %></strong>
+    <a href="/weekly?date=<%= nextWeek %>">next week &rarr;</a>
+    <a href="/weekly?date=<%= thisWeek %>" class="small">(this week)</a>
+  </div>
+
+  <h3>Weekly score</h3>
+  <div class="score-row">
+    <% pillarScores.forEach(({pillar, score}) => { %>
+      <div class="score-pill">
+        <div class="emoji"><%= score === 'green' ? '🟢' : score === 'yellow' ? '🟡' : score === 'red' ? '🔴' : '⚪' %></div>
+        <div><%= pillar.emoji %> <%= pillar.label %></div>
+        <div class="small muted"><%= score ? score : 'no commitments' %></div>
+      </div>
+    <% }) %>
+  </div>
+</div>
+
+<% days.forEach(d => { %>
+  <div class="card day-block" style="border-left-color: <%= d.pillar ? d.pillar.color : '#ccc' %>">
+    <div class="hero">
+      <div>
+        <div class="date"><%= formatDateNice(d.date) %></div>
+        <% if (d.pillar) { %>
+          <div><%- pillarTagHtml(d.pillar.key) %> — owner: <strong><%= d.owner ? d.owner.name + ' (' + d.owner.role + ')' : '—' %></strong></div>
+        <% } else { %>
+          <div class="muted">Weekend</div>
+        <% } %>
+      </div>
+      <a class="btn small secondary" href="/sessions/<%= d.date %>">Open</a>
+    </div>
+
+    <% if (d.session) { %>
+      <% if (d.session.objective) { %><p><strong>Objective:</strong> <%= d.session.objective %></p><% } %>
+      <% if (d.session.discussion) { %><p><strong>Discussion:</strong> <%= d.session.discussion %></p><% } %>
+      <% if (d.session.decisions) { %><p><strong>Decisions:</strong> <%= d.session.decisions %></p><% } %>
+
+      <% if (d.commitments.length > 0) { %>
+        <table>
+          <tr><th>Commitment</th><th>Owner</th><th>Due</th><th>Status</th></tr>
+          <% d.commitments.forEach(c => { %>
+            <tr>
+              <td><%= c.description %></td>
+              <td class="small"><%= c.ownerFounder ? c.ownerFounder.role : '—' %></td>
+              <td class="small"><%= c.due_date ? formatDateNice(c.due_date) : '—' %></td>
+              <td><%- statusBadgeHtml(c.status) %></td>
+            </tr>
+          <% }) %>
+        </table>
+      <% } %>
+    <% } else if (d.pillar) { %>
+      <p class="muted small">No session recorded for this day yet.</p>
+    <% } %>
+  </div>
+<% }) %>
+
+<div class="card">
+  <h3>Hours this week</h3>
+  <table>
+    <tr><th>Founder</th><th>Days logged</th><th>Total hours</th></tr>
+    <% hoursByFounder.forEach(h => { %>
+      <tr>
+        <td><%= h.founder.name %> (<%= h.founder.role %>)</td>
+        <td><%= h.days %> / 5</td>
+        <td><%= h.total.toFixed(1) %></td>
+      </tr>
+    <% }) %>
+  </table>
+</div>

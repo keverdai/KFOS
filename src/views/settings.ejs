@@ -1,0 +1,60 @@
+<div class="card">
+  <h2>Settings</h2>
+</div>
+
+<div class="card">
+  <h3>Founders</h3>
+  <p class="small muted">Rename the seeded CEO/CTO/COO rows to your actual names. Order (sort_order) determines rotation — it's fixed at seed time.</p>
+  <% founders.forEach(f => { %>
+    <form method="post" action="/settings/founders/<%= f.id %>" class="grid cols-3" style="align-items:end; margin-bottom:10px">
+      <div>
+        <label>Name</label>
+        <input type="text" name="name" value="<%= f.name %>" />
+      </div>
+      <div>
+        <label>Role</label>
+        <input type="text" name="role" value="<%= f.role %>" />
+      </div>
+      <div>
+        <button class="btn small" type="submit">Save</button>
+      </div>
+    </form>
+  <% }) %>
+</div>
+
+<div class="card">
+  <h3>General</h3>
+  <form method="post" action="/settings/general">
+    <label for="company_name">Company name</label>
+    <input type="text" name="company_name" id="company_name" value="<%= companyName %>" />
+
+    <label for="daily_hour_target">Daily hour target</label>
+    <input type="number" name="daily_hour_target" id="daily_hour_target" value="<%= dailyHourTarget %>" step="0.5" min="1" max="16" />
+
+    <label for="rotation_start_date">Rotation week 1 start (any date in that week — snaps to Monday)</label>
+    <input type="date" name="rotation_start_date" id="rotation_start_date" value="<%= rotationStartDate %>" />
+    <p class="small muted">This anchors the fair rotation cycle: changing it reshuffles who owns which pillar going forward.</p>
+
+    <button class="btn" type="submit">Save</button>
+  </form>
+</div>
+
+<div class="card">
+  <h3>Weekday &rarr; pillar mapping</h3>
+  <p class="small muted">Default cadence: Mon Revenue, Tue Product, Wed Distribution, Thu Founder Priority, Fri Learning + Review.</p>
+  <form method="post" action="/settings/weekday-pillars" class="grid cols-5">
+    <% ['Mon','Tue','Wed','Thu','Fri'].forEach((label, i) => { const day = i+1; %>
+      <div>
+        <label><%= label %></label>
+        <select name="day<%= day %>">
+          <% allPillars.forEach(p => { %>
+            <option value="<%= p.key %>" <%= weekdayPillarMap[day] === p.key ? 'selected' : '' %>><%= p.emoji %> <%= p.label %></option>
+          <% }) %>
+        </select>
+      </div>
+    <% }) %>
+    <div style="grid-column: 1 / -1">
+      <button class="btn" type="submit">Save mapping</button>
+    </div>
+  </form>
+</div>

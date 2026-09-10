@@ -1,0 +1,110 @@
+<div class="card">
+  <div class="hero">
+    <div>
+      <div class="date"><%= formatDateNice(date) %></div>
+      <% if (isWeekend) { %>
+        <div class="pillar-big">Weekend</div>
+      <% } else { %>
+        <div class="pillar-big"><%- pillarTagHtml(pillar.key) %></div>
+        <p class="muted small" style="max-width:520px"><%= pillar.question %></p>
+      <% } %>
+    </div>
+    <div>
+      <% if (session && !session.closed) { %>
+        <form method="post" action="/sessions/<%= date %>/close" style="display:inline">
+          <button class="btn secondary" type="submit">Close session</button>
+        </form>
+      <% } else if (session && session.closed) { %>
+        <span class="status-badge status-green">Closed</span>
+      <% } %>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <h3>Resolution</h3>
+  <p class="small muted">Discussion &rarr; Decisions &rarr; Owner &rarr; Evidence &rarr; Outcome. A session isn't successful because you talked for two hours — it's successful because it produced a decision with an owner.</p>
+  <form method="post" action="/sessions/<%= date %>">
+    <label for="pillar">Pillar for this session</label>
+    <select name="pillar" id="pillar">
+      <% allPillars.forEach(p => { %>
+        <option value="<%= p.key %>" <%= (session ? session.pillar : (pillar && pillar.key)) === p.key ? 'selected' : '' %>><%= p.emoji %> <%= p.label %></option>
+      <% }) %>
+    </select>
+
+    <label for="owner_founder_id">Session owner</label>
+    <select name="owner_founder_id" id="owner_founder_id">
+      <% founders.forEach(f => { %>
+        <option value="<%= f.id %>" <%= (session ? session.owner_founder_id : (owner && owner.id)) === f.id ? 'selected' : '' %>><%= f.name %> (<%= f.role %>)</option>
+      <% }) %>
+    </select>
+
+    <label for="objective">Objective — what are we trying to determine or move?</label>
+    <input type="text" name="objective" id="objective" placeholder="e.g. Determine how we get our next 3 qualified customer conversations" value="<%= session ? session.objective : '' %>" />
+
+    <label for="discussion">Discussion notes</label>
+    <textarea name="discussion" id="discussion" placeholder="What did we talk about?"><%= session ? session.discussion : '' %></textarea>
+
+    <label for="decisions">Decisions</label>
+    <textarea name="decisions" id="decisions" placeholder="What did we decide? One per line."><%= session ? session.decisions : '' %></textarea>
+
+    <button class="btn" type="submit">Save resolution</button>
+  </form>
+</div>
+
+<div class="card">
+  <h3>Commitments from this session</h3>
+  <% if (commitments.length === 0) { %>
+    <p class="muted small">No commitments yet. Every decision worth making should produce one.</p>
+  <% } else { %>
+    <table>
+      <tr><th>Pillar</th><th>Commitment</th><th>Definition of done</th><th>Owner</th><th>Due</th><th>Status</th></tr>
+      <% commitments.forEach(c => { const f = founders.find(f=>f.id===c.owner_founder_id); %>
+        <tr>
+          <td><%- pillarTagHtml(c.pillar) %></td>
+          <td><%= c.description %></td>
+          <td class="small muted"><%= c.definition_of_done %></td>
+          <td><%= f ? f.role : '—' %></td>
+          <td><%= c.due_date ? formatDateNice(c.due_date) : '—' %></td>
+          <td><%- statusBadgeHtml(c.status) %></td>
+        </tr>
+      <% }) %>
+    </table>
+  <% } %>
+
+  <form method="post" action="/sessions/<%= date %>/commitments">
+    <fieldset>
+      <legend>Add a commitment</legend>
+      <label for="description">Commitment</label>
+      <input type="text" name="description" id="description" required placeholder="e.g. Contact 30 qualified lenders" />
+
+      <label for="definition_of_done">Definition of done (be specific — this is the evidence)</label>
+      <input type="text" name="definition_of_done" id="definition_of_done" placeholder="e.g. 30 prospects logged in CRM with contact + 10 replies followed up" />
+
+      <div class="grid cols-3">
+        <div>
+          <label for="pillar2">Pillar</label>
+          <select name="pillar" id="pillar2">
+            <% allPillars.forEach(p => { %>
+              <option value="<%= p.key %>" <%= (pillar && pillar.key === p.key) ? 'selected' : '' %>><%= p.emoji %> <%= p.label %></option>
+            <% }) %>
+          </select>
+        </div>
+        <div>
+          <label for="owner_founder_id2">Owner</label>
+          <select name="owner_founder_id" id="owner_founder_id2">
+            <% founders.forEach(f => { %>
+              <option value="<%= f.id %>"><%= f.name %> (<%= f.role %>)</option>
+            <% }) %>
+          </select>
+        </div>
+        <div>
+          <label for="due_date">Due date</label>
+          <input type="date" name="due_date" id="due_date" />
+        </div>
+      </div>
+
+      <button class="btn" type="submit">Add commitment</button>
+    </fieldset>
+  </form>
+</div>

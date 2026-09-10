@@ -1,0 +1,88 @@
+<div class="card hero">
+  <div>
+    <div class="date">
+      <a href="/?date=<%= prevDate %>">&larr;</a>
+      <%= formatDateNice(date) %>
+      <a href="/?date=<%= nextDate %>">&rarr;</a>
+      <% if (date !== todayStr) { %> · <a href="/">back to today</a><% } %>
+    </div>
+
+    <% if (isWeekend) { %>
+      <div class="pillar-big">Weekend — no scheduled session</div>
+      <p class="muted">No pillar session runs on weekends. Use this time to rest or catch up on evidence.</p>
+    <% } else { %>
+      <div class="pillar-big"><%- pillarTagHtml(pillar.key) %></div>
+      <div class="owner">Session owner: <strong><%= owner ? (owner.name + ' (' + owner.role + ')') : '—' %></strong></div>
+      <p class="muted small" style="max-width:520px"><%= pillar.question %></p>
+    <% } %>
+  </div>
+  <div>
+    <% if (!isWeekend) { %>
+      <a class="btn" href="/sessions/<%= date %>"><%= session ? 'Open session' : 'Start today\'s session' %></a>
+    <% } %>
+    <a class="btn secondary" href="/daily-log?date=<%= date %>">Log founder hours</a>
+  </div>
+</div>
+
+<div class="grid cols-2">
+  <div class="card">
+    <h3>⚠️ Overdue commitments (<%= overdue.length %>)</h3>
+    <% if (overdue.length === 0) { %>
+      <p class="muted small">Nothing overdue.</p>
+    <% } else { %>
+      <table>
+        <tr><th>Pillar</th><th>Commitment</th><th>Owner</th><th>Due</th></tr>
+        <% overdue.forEach(c => { %>
+          <tr>
+            <td><%- pillarTagHtml(c.pillar) %></td>
+            <td><a href="/commitments#c<%= c.id %>"><%= c.description %></a></td>
+            <td><% const f = founders.find(f=>f.id===c.owner_founder_id); %><%= f ? f.role : '—' %></td>
+            <td><%= formatDateNice(c.due_date) %></td>
+          </tr>
+        <% }) %>
+      </table>
+    <% } %>
+  </div>
+
+  <div class="card">
+    <h3>⏳ Due within 3 days (<%= dueSoon.length %>)</h3>
+    <% if (dueSoon.length === 0) { %>
+      <p class="muted small">Nothing due soon.</p>
+    <% } else { %>
+      <table>
+        <tr><th>Pillar</th><th>Commitment</th><th>Owner</th><th>Due</th></tr>
+        <% dueSoon.forEach(c => { %>
+          <tr>
+            <td><%- pillarTagHtml(c.pillar) %></td>
+            <td><a href="/commitments#c<%= c.id %>"><%= c.description %></a></td>
+            <td><% const f = founders.find(f=>f.id===c.owner_founder_id); %><%= f ? f.role : '—' %></td>
+            <td><%= formatDateNice(c.due_date) %></td>
+          </tr>
+        <% }) %>
+      </table>
+    <% } %>
+  </div>
+</div>
+
+<div class="card">
+  <h3>Today's founder logs (<%= todaysLogs.length %>/<%= founders.length %>)</h3>
+  <div class="grid cols-3">
+    <% founders.forEach(f => {
+      const log = todaysLogs.find(l => l.founder_id === f.id);
+      const total = log ? (log.revenue_hours + log.product_hours + log.distribution_hours + log.infrastructure_hours + log.learning_hours) : 0;
+      const pct = Math.min(100, Math.round((total / hourTarget) * 100));
+    %>
+      <div class="score-pill">
+        <div><strong><%= f.name %></strong> <span class="muted small">(<%= f.role %>)</span></div>
+        <div class="small muted"><%= total.toFixed(1) %> / <%= hourTarget %> hrs</div>
+        <div class="hours-bar"><div style="width:<%= pct %>%"></div></div>
+        <a class="small" href="/daily-log?date=<%= todayStr %>&founder=<%= f.id %>"><%= log ? 'Edit log' : 'Add log' %></a>
+      </div>
+    <% }) %>
+  </div>
+</div>
+
+<div class="card">
+  <h3>The rule</h3>
+  <p class="small">If you spend time on something, it must move one of the five levels forward — Revenue, Product, Distribution, Infrastructure, or Learning. Every working day produces evidence: something shipped, someone contacted, something validated, something learned, or a decision made. We measure outcomes, not task counts.</p>
+</div>

@@ -1,0 +1,38 @@
+<div class="card">
+  <div class="week-nav">
+    <a href="/scorecard?date=<%= prevWeek %>">&larr; prev week</a>
+    <strong><%= weekLabel %></strong>
+    <a href="/scorecard?date=<%= nextWeek %>">next week &rarr;</a>
+    <a href="/scorecard?date=<%= thisWeek %>" class="small">(this week)</a>
+  </div>
+  <h2>Founder Scorecard</h2>
+  <p class="small muted">Five things, not twenty: time, commitments, evidence, outcomes, ownership. Hours are one input — not the primary performance metric. Someone can work 30 hours and accomplish nothing.</p>
+</div>
+
+<div class="grid cols-3">
+  <% rows.forEach(r => { %>
+    <div class="card">
+      <h3><%= r.founder.name %> <span class="muted small">(<%= r.founder.role %>)</span></h3>
+
+      <p class="small"><strong>Time</strong><br/>
+        <%= r.totalHours.toFixed(1) %> / <%= r.targetHours %> hrs (<%= r.daysLogged %>/5 days logged)
+        <div class="hours-bar"><div style="width:<%= Math.min(100, Math.round((r.totalHours / r.targetHours) * 100)) %>%"></div></div>
+      </p>
+
+      <p class="small"><strong>Commitments</strong><br/>
+        <%= r.delivered %> delivered / <%= r.commitmentTotal %> owned
+        <% if (r.deliveryRate !== null) { %> (<%= r.deliveryRate %>%)<% } %>
+        <% if (r.missed > 0) { %><br/><span style="color:var(--red)"><%= r.missed %> missed</span><% } %>
+      </p>
+
+      <p class="small"><strong>Evidence</strong><br/>
+        <%= r.evidenceEntries %> daily logs with recorded evidence
+      </p>
+    </div>
+  <% }) %>
+</div>
+
+<div class="card">
+  <h3>Reading the scorecard</h3>
+  <p class="small muted">A repeatedly 🔴 founder isn't automatically a problem — investigate the pattern: unrealistic commitments, unclear priorities, a real blocker, or a role not being fulfilled. The system's job is to expose the pattern, not to punish a single miss.</p>
+</div>

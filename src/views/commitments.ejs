@@ -1,0 +1,115 @@
+<div class="card">
+  <h2>Commitments Board</h2>
+  <p class="small muted">No commitment without an owner. No completion without evidence. No failure without learning. If it isn't on this board, it isn't an official company commitment.</p>
+
+  <form method="get" action="/commitments" class="grid cols-3">
+    <div>
+      <label for="status">Status</label>
+      <select name="status" id="status" onchange="this.form.submit()">
+        <option value="">All</option>
+        <option value="open" <%= filters.status === 'open' ? 'selected' : '' %>>⚪ Open</option>
+        <option value="green" <%= filters.status === 'green' ? 'selected' : '' %>>🟢 Done</option>
+        <option value="yellow" <%= filters.status === 'yellow' ? 'selected' : '' %>>🟡 Progressing</option>
+        <option value="red" <%= filters.status === 'red' ? 'selected' : '' %>>🔴 Missed</option>
+        <option value="cancelled" <%= filters.status === 'cancelled' ? 'selected' : '' %>>⚪ Cancelled</option>
+      </select>
+    </div>
+    <div>
+      <label for="owner">Owner</label>
+      <select name="owner" id="owner" onchange="this.form.submit()">
+        <option value="">Everyone</option>
+        <% founders.forEach(f => { %>
+          <option value="<%= f.id %>" <%= String(filters.owner) === String(f.id) ? 'selected' : '' %>><%= f.name %> (<%= f.role %>)</option>
+        <% }) %>
+      </select>
+    </div>
+    <div>
+      <label for="pillar">Pillar</label>
+      <select name="pillar" id="pillar" onchange="this.form.submit()">
+        <option value="">All</option>
+        <% allPillars.forEach(p => { %>
+          <option value="<%= p.key %>" <%= filters.pillar === p.key ? 'selected' : '' %>><%= p.emoji %> <%= p.label %></option>
+        <% }) %>
+      </select>
+    </div>
+  </form>
+</div>
+
+<div class="card">
+  <table>
+    <tr><th>Pillar</th><th>Commitment</th><th>Owner</th><th>Due</th><th>Status</th><th>Evidence</th><th></th></tr>
+    <% commitments.forEach(c => {
+      const f = founders.find(f=>f.id===c.owner_founder_id);
+      const overdue = c.due_date && c.due_date < todayStr && !['green','cancelled'].includes(c.status);
+    %>
+      <tr id="c<%= c.id %>">
+        <td><%- pillarTagHtml(c.pillar) %></td>
+        <td>
+          <strong><%= c.description %></strong>
+          <% if (c.definition_of_done) { %><div class="small muted">DoD: <%= c.definition_of_done %></div><% } %>
+        </td>
+        <td><%= f ? f.role : '—' %></td>
+        <td class="<%= overdue ? 'small' : 'small muted' %>" style="<%= overdue ? 'color:var(--red);font-weight:600' : '' %>">
+          <%= c.due_date ? formatDateNice(c.due_date) : '—' %><%= overdue ? ' (overdue)' : '' %>
+        </td>
+        <td><%- statusBadgeHtml(c.status) %></td>
+        <td class="small muted"><%= c.evidence %></td>
+        <td>
+          <details>
+            <summary class="small">Update</summary>
+            <form method="post" action="/commitments/<%= c.id %>/status" style="min-width:220px">
+              <label>Status</label>
+              <select name="status">
+                <option value="open" <%= c.status==='open'?'selected':'' %>>⚪ Open</option>
+                <option value="green" <%= c.status==='green'?'selected':'' %>>🟢 Done</option>
+                <option value="yellow" <%= c.status==='yellow'?'selected':'' %>>🟡 Progressing</option>
+                <option value="red" <%= c.status==='red'?'selected':'' %>>🔴 Missed</option>
+                <option value="cancelled" <%= c.status==='cancelled'?'selected':'' %>>⚪ Cancelled</option>
+              </select>
+              <label>Evidence</label>
+              <input type="text" name="evidence" value="<%= c.evidence %>" placeholder="link, PR, CRM entry, etc." />
+              <label>Note (e.g. why cancelled/missed)</label>
+              <input type="text" name="status_note" value="<%= c.status_note %>" />
+              <button class="btn small" type="submit">Save</button>
+            </form>
+          </details>
+        </td>
+      </tr>
+    <% }) %>
+  </table>
+  <% if (commitments.length === 0) { %><p class="muted small">No commitments match this filter.</p><% } %>
+</div>
+
+<div class="card">
+  <h3>Add a standalone commitment</h3>
+  <p class="small muted">Prefer adding commitments from a session (Today &rarr; session) so they're tied to a resolution — use this for ad-hoc commitments.</p>
+  <form method="post" action="/commitments/new">
+    <label for="description">Commitment</label>
+    <input type="text" name="description" id="description" required />
+    <label for="definition_of_done">Definition of done</label>
+    <input type="text" name="definition_of_done" id="definition_of_done" />
+    <div class="grid cols-3">
+      <div>
+        <label for="pillar3">Pillar</label>
+        <select name="pillar" id="pillar3">
+          <% allPillars.forEach(p => { %>
+            <option value="<%= p.key %>"><%= p.emoji %> <%= p.label %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div>
+        <label for="owner3">Owner</label>
+        <select name="owner_founder_id" id="owner3">
+          <% founders.forEach(f => { %>
+            <option value="<%= f.id %>"><%= f.name %> (<%= f.role %>)</option>
+          <% }) %>
+        </select>
+      </div>
+      <div>
+        <label for="due3">Due date</label>
+        <input type="date" name="due_date" id="due3" />
+      </div>
+    </div>
+    <button class="btn" type="submit">Add</button>
+  </form>
+</div>

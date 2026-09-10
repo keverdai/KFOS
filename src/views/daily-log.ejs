@@ -1,0 +1,76 @@
+<div class="card">
+  <h2>Daily Founder Log</h2>
+  <p class="small muted">"I was thinking about the product for 3 hours" isn't evidence. "I investigated why X happens, tested three approaches, rejected two and implemented Y" is. Take 5–10 minutes, not 45.</p>
+
+  <form method="get" action="/daily-log" class="grid cols-2">
+    <div>
+      <label for="founder">Founder</label>
+      <select name="founder" id="founder" onchange="this.form.submit()">
+        <% founders.forEach(f => { %>
+          <option value="<%= f.id %>" <%= f.id === selectedFounderId ? 'selected' : '' %>><%= f.name %> (<%= f.role %>)</option>
+        <% }) %>
+      </select>
+    </div>
+    <div>
+      <label for="date">Date</label>
+      <input type="date" name="date" id="date" value="<%= date %>" onchange="this.form.submit()" />
+    </div>
+  </form>
+</div>
+
+<div class="card">
+  <form method="post" action="/daily-log">
+    <input type="hidden" name="date" value="<%= date %>" />
+    <input type="hidden" name="founder_id" value="<%= selectedFounderId %>" />
+
+    <% PILLARS.forEach(p => {
+      const hoursField = p.key + '_hours';
+      const evField = p.key + '_evidence';
+      const hoursVal = existing ? existing[hoursField] : 0;
+      const evVal = existing ? existing[evField] : '';
+    %>
+      <fieldset>
+        <legend><%= p.emoji %> <%= p.label %></legend>
+        <div class="grid cols-2">
+          <div>
+            <label for="<%= hoursField %>">Hours</label>
+            <input type="number" step="0.25" min="0" max="16" name="<%= hoursField %>" id="<%= hoursField %>" value="<%= hoursVal %>" />
+          </div>
+          <div>
+            <label for="<%= evField %>">What did I advance? (evidence)</label>
+            <input type="text" name="<%= evField %>" id="<%= evField %>" value="<%= evVal %>" placeholder="e.g. Contacted 8 lenders, 3 responded, 1 requested a demo" />
+          </div>
+        </div>
+      </fieldset>
+    <% }) %>
+
+    <label for="biggest_outcome">Biggest outcome today</label>
+    <input type="text" name="biggest_outcome" id="biggest_outcome" value="<%= existing ? existing.biggest_outcome : '' %>" />
+
+    <label for="biggest_problem">Biggest problem discovered</label>
+    <input type="text" name="biggest_problem" id="biggest_problem" value="<%= existing ? existing.biggest_problem : '' %>" />
+
+    <label for="decision_tomorrow">Decision / change for tomorrow</label>
+    <input type="text" name="decision_tomorrow" id="decision_tomorrow" value="<%= existing ? existing.decision_tomorrow : '' %>" />
+
+    <button class="btn" type="submit">Save log</button>
+  </form>
+</div>
+
+<div class="card">
+  <h3>Last 14 days</h3>
+  <table>
+    <tr><th>Date</th><th>Founder</th><th>Total hrs</th><th>Outcome</th></tr>
+    <% history.slice().reverse().forEach(l => {
+      const total = l.revenue_hours + l.product_hours + l.distribution_hours + l.infrastructure_hours + l.learning_hours;
+    %>
+      <tr>
+        <td><%= formatDateNice(l.date) %></td>
+        <td><%= l.founder_name %> (<%= l.founder_role %>)</td>
+        <td><%= total.toFixed(2) %> / <%= hourTarget %></td>
+        <td class="small muted"><%= l.biggest_outcome %></td>
+      </tr>
+    <% }) %>
+  </table>
+  <% if (history.length === 0) { %><p class="muted small">No logs yet.</p><% } %>
+</div>
