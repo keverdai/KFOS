@@ -70,23 +70,49 @@ configurable rotation start date; see `src/lib/rotation.js`.
 - **Settings** (`/settings`) — rename founders (seeded as CEO/CTO/COO),
   company name, daily hour target, rotation start date, weekday→pillar map.
 
-## Running it
+## Running it locally (try it out first)
 
 ```bash
 npm install
 npm start
 ```
 
-Then open http://localhost:3000. Data is stored locally in `data/kfos.db`
-(SQLite, created automatically on first run — nothing to configure).
+Then open http://localhost:3000 in your browser. Data is stored locally in
+`data/kfos.db` (SQLite, created automatically on first run — nothing to
+configure). No password is required in this mode — see **Password
+protection** below for when you're ready to put it on a shared URL.
 
 First thing to do: go to **Settings** and rename the three seeded founders
 (CEO/CTO/COO) to your actual names.
 
-### Environment variables (optional)
+To have all 3 of you try it on the same laptop before deploying anywhere,
+just take turns — switch founder in the top-right selector on Daily Log,
+or each open it in your own browser profile. The data is shared by
+whoever is running `npm start`; the other two aren't seeing live updates
+until it's actually hosted somewhere reachable (next section).
+
+### Environment variables
 
 - `PORT` — port to listen on (default `3000`)
 - `KFOS_DB_PATH` — path to the SQLite file (default `data/kfos.db`)
+- `KFOS_AUTH_PASSWORD` — sets a shared password and turns on login (see below)
+- `KFOS_AUTH_USERNAME` — username to pair with it (default `keverd`)
+
+## Password protection
+
+The app has **no login by default** — fine for `localhost`, not fine once
+it's reachable by URL, since anyone with the link could read or edit every
+commitment and daily log. Setting `KFOS_AUTH_PASSWORD` turns on a single
+shared HTTP Basic Auth login for the whole app (all 3 of you use the same
+username/password):
+
+```bash
+KFOS_AUTH_USERNAME=keverd KFOS_AUTH_PASSWORD='choose-a-real-password' npm start
+```
+
+Every route — including static assets — requires that login once it's set.
+Set both as environment variables on whatever host runs it (see below);
+don't commit a real password into the repo.
 
 ## Deploying for daily use
 
@@ -94,7 +120,9 @@ This is a small stateful Node/Express app with a local SQLite file — the
 simplest path is a single always-on box or a platform with a persistent
 disk (a small VPS, Fly.io, Railway, Render with a persistent volume, etc.).
 Point `KFOS_DB_PATH` at a persisted volume if the platform's filesystem is
-ephemeral. No external services, accounts, or API keys are required.
+ephemeral, and set `KFOS_AUTH_PASSWORD`/`KFOS_AUTH_USERNAME` there too. No
+external services, accounts, or API keys are required beyond the host
+itself.
 
 ## Project layout
 

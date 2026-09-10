@@ -4,6 +4,7 @@ const expressLayouts = require('express-ejs-layouts');
 
 const settings = require('./lib/settings');
 const { getPillar } = require('./lib/pillars');
+const basicAuth = require('./lib/auth');
 
 const todayRoutes = require('./routes/today');
 const sessionRoutes = require('./routes/sessions');
@@ -20,6 +21,7 @@ app.set('views', path.join(__dirname, 'views'));
 app.use(expressLayouts);
 app.set('layout', 'layout');
 
+app.use(basicAuth);
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use('/css', express.static(path.join(__dirname, '..', 'public', 'css')));
