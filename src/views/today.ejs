@@ -1,10 +1,10 @@
 <div class="card hero">
   <div>
     <div class="date">
-      <a href="/?date=<%= prevDate %>">&larr;</a>
+      <a href="/today?date=<%= prevDate %>">&larr;</a>
       <%= formatDateNice(date) %>
-      <a href="/?date=<%= nextDate %>">&rarr;</a>
-      <% if (date !== todayStr) { %> · <a href="/">back to today</a><% } %>
+      <a href="/today?date=<%= nextDate %>">&rarr;</a>
+      <% if (date !== todayStr) { %> · <a href="/today">back to today</a><% } %>
     </div>
 
     <% if (isWeekend) { %>
@@ -26,7 +26,7 @@
 
 <div class="grid cols-2">
   <div class="card">
-    <h3>⚠️ Overdue commitments (<%= overdue.length %>)</h3>
+    <h3><span class="ico">⚠️</span> Overdue commitments (<%= overdue.length %>)</h3>
     <% if (overdue.length === 0) { %>
       <p class="muted small">Nothing overdue.</p>
     <% } else { %>
@@ -45,7 +45,7 @@
   </div>
 
   <div class="card">
-    <h3>⏳ Due within 3 days (<%= dueSoon.length %>)</h3>
+    <h3><span class="ico">⏳</span> Due within 3 days (<%= dueSoon.length %>)</h3>
     <% if (dueSoon.length === 0) { %>
       <p class="muted small">Nothing due soon.</p>
     <% } else { %>
@@ -80,9 +80,4 @@
       </div>
     <% }) %>
   </div>
-</div>
-
-<div class="card">
-  <h3>The rule</h3>
-  <p class="small">If you spend time on something, it must move one of the five levels forward — Revenue, Product, Distribution, Infrastructure, or Learning. Every working day produces evidence: something shipped, someone contacted, something validated, something learned, or a decision made. We measure outcomes, not task counts.</p>
 </div>

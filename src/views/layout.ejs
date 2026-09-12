@@ -4,28 +4,94 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title><%= typeof title !== 'undefined' ? title + ' · KFOS' : 'KFOS' %></title>
+  <script>
+    // Set the theme before first paint so there's no flash of the wrong one.
+    (function () {
+      try {
+        var stored = localStorage.getItem('kfos-theme');
+        var theme = stored || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        document.documentElement.setAttribute('data-theme', theme);
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><rect width='24' height='24' fill='black'/><text x='12' y='17' font-family='monospace' font-size='14' font-weight='700' fill='white' text-anchor='middle'>K</text></svg>" />
   <link rel="stylesheet" href="/css/style.css" />
 </head>
 <body>
-  <div class="topbar">
-    <a class="brand" href="/">
-      KFOS
-      <small><%= companyName %> Founder Operating System</small>
-    </a>
-    <nav>
-      <a href="/" class="<%= active === 'today' ? 'active' : '' %>">Today</a>
-      <a href="/commitments" class="<%= active === 'commitments' ? 'active' : '' %>">Commitments</a>
-      <a href="/daily-log" class="<%= active === 'daily-log' ? 'active' : '' %>">Daily Log</a>
-      <a href="/weekly" class="<%= active === 'weekly' ? 'active' : '' %>">Weekly Log</a>
-      <a href="/scorecard" class="<%= active === 'scorecard' ? 'active' : '' %>">Scorecard</a>
-      <a href="/settings" class="<%= active === 'settings' ? 'active' : '' %>">Settings</a>
-    </nav>
-  </div>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="/">
+        <span class="brand-mark">KFOS</span>
+        <span class="brand-sub"><%= companyName %> Founder Operating System</span>
+      </a>
+
+      <button id="nav-toggle" class="nav-toggle" aria-label="Toggle menu" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+
+      <nav id="site-nav">
+        <a href="/guide" class="<%= active === 'guide' ? 'active' : '' %>">Guide</a>
+        <a href="/today" class="<%= active === 'today' ? 'active' : '' %>">Today</a>
+        <a href="/commitments" class="<%= active === 'commitments' ? 'active' : '' %>">Commitments</a>
+        <a href="/daily-log" class="<%= active === 'daily-log' ? 'active' : '' %>">Daily Log</a>
+        <a href="/weekly" class="<%= active === 'weekly' ? 'active' : '' %>">Weekly Log</a>
+        <a href="/scorecard" class="<%= active === 'scorecard' ? 'active' : '' %>">Scorecard</a>
+        <a href="/settings" class="<%= active === 'settings' ? 'active' : '' %>">Settings</a>
+        <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Toggle light/dark theme">
+          <span class="theme-toggle-icon" aria-hidden="true"></span>
+          <span class="theme-toggle-label">Theme</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+
   <div class="container">
     <% if (typeof flash !== 'undefined' && flash) { %>
       <div class="flash"><%= flash %></div>
     <% } %>
     <%- body %>
   </div>
+
+  <script>
+    (function () {
+      var root = document.documentElement;
+      var toggle = document.getElementById('theme-toggle');
+      var navToggle = document.getElementById('nav-toggle');
+      var nav = document.getElementById('site-nav');
+
+      function currentTheme() {
+        return root.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+      }
+      function paintToggle() {
+        if (!toggle) return;
+        var isDark = currentTheme() === 'dark';
+        toggle.querySelector('.theme-toggle-icon').textContent = isDark ? '☀' : '☾';
+        toggle.querySelector('.theme-toggle-label').textContent = isDark ? 'Light' : 'Dark';
+      }
+      paintToggle();
+
+      if (toggle) {
+        toggle.addEventListener('click', function () {
+          var next = currentTheme() === 'dark' ? 'light' : 'dark';
+          root.setAttribute('data-theme', next);
+          try { localStorage.setItem('kfos-theme', next); } catch (e) {}
+          paintToggle();
+        });
+      }
+
+      if (navToggle && nav) {
+        navToggle.addEventListener('click', function () {
+          var open = nav.classList.toggle('open');
+          navToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        });
+        nav.querySelectorAll('a').forEach(function (a) {
+          a.addEventListener('click', function () {
+            nav.classList.remove('open');
+            navToggle.setAttribute('aria-expanded', 'false');
+          });
+        });
+      }
+    })();
+  </script>
 </body>
 </html>

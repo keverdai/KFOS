@@ -1,17 +1,16 @@
 <div class="card">
   <h2>Commitments Board</h2>
-  <p class="small muted">No commitment without an owner. No completion without evidence. No failure without learning. If it isn't on this board, it isn't an official company commitment.</p>
 
   <form method="get" action="/commitments" class="grid cols-3">
     <div>
       <label for="status">Status</label>
       <select name="status" id="status" onchange="this.form.submit()">
         <option value="">All</option>
-        <option value="open" <%= filters.status === 'open' ? 'selected' : '' %>>⚪ Open</option>
-        <option value="green" <%= filters.status === 'green' ? 'selected' : '' %>>🟢 Done</option>
-        <option value="yellow" <%= filters.status === 'yellow' ? 'selected' : '' %>>🟡 Progressing</option>
-        <option value="red" <%= filters.status === 'red' ? 'selected' : '' %>>🔴 Missed</option>
-        <option value="cancelled" <%= filters.status === 'cancelled' ? 'selected' : '' %>>⚪ Cancelled</option>
+        <option value="open" <%= filters.status === 'open' ? 'selected' : '' %>>Open</option>
+        <option value="green" <%= filters.status === 'green' ? 'selected' : '' %>>Done</option>
+        <option value="yellow" <%= filters.status === 'yellow' ? 'selected' : '' %>>Progressing</option>
+        <option value="red" <%= filters.status === 'red' ? 'selected' : '' %>>Missed</option>
+        <option value="cancelled" <%= filters.status === 'cancelled' ? 'selected' : '' %>>Cancelled</option>
       </select>
     </div>
     <div>
@@ -28,7 +27,7 @@
       <select name="pillar" id="pillar" onchange="this.form.submit()">
         <option value="">All</option>
         <% allPillars.forEach(p => { %>
-          <option value="<%= p.key %>" <%= filters.pillar === p.key ? 'selected' : '' %>><%= p.emoji %> <%= p.label %></option>
+          <option value="<%= p.key %>" <%= filters.pillar === p.key ? 'selected' : '' %>><%= p.label %></option>
         <% }) %>
       </select>
     </div>
@@ -49,7 +48,7 @@
           <% if (c.definition_of_done) { %><div class="small muted">DoD: <%= c.definition_of_done %></div><% } %>
         </td>
         <td><%= f ? f.role : '—' %></td>
-        <td class="<%= overdue ? 'small' : 'small muted' %>" style="<%= overdue ? 'color:var(--red);font-weight:600' : '' %>">
+        <td class="<%= overdue ? 'small' : 'small muted' %>" style="<%= overdue ? 'font-weight:700;text-decoration:underline' : '' %>">
           <%= c.due_date ? formatDateNice(c.due_date) : '—' %><%= overdue ? ' (overdue)' : '' %>
         </td>
         <td><%- statusBadgeHtml(c.status) %></td>
@@ -60,11 +59,11 @@
             <form method="post" action="/commitments/<%= c.id %>/status" style="min-width:220px">
               <label>Status</label>
               <select name="status">
-                <option value="open" <%= c.status==='open'?'selected':'' %>>⚪ Open</option>
-                <option value="green" <%= c.status==='green'?'selected':'' %>>🟢 Done</option>
-                <option value="yellow" <%= c.status==='yellow'?'selected':'' %>>🟡 Progressing</option>
-                <option value="red" <%= c.status==='red'?'selected':'' %>>🔴 Missed</option>
-                <option value="cancelled" <%= c.status==='cancelled'?'selected':'' %>>⚪ Cancelled</option>
+                <option value="open" <%= c.status==='open'?'selected':'' %>>Open</option>
+                <option value="green" <%= c.status==='green'?'selected':'' %>>Done</option>
+                <option value="yellow" <%= c.status==='yellow'?'selected':'' %>>Progressing</option>
+                <option value="red" <%= c.status==='red'?'selected':'' %>>Missed</option>
+                <option value="cancelled" <%= c.status==='cancelled'?'selected':'' %>>Cancelled</option>
               </select>
               <label>Evidence</label>
               <input type="text" name="evidence" value="<%= c.evidence %>" placeholder="link, PR, CRM entry, etc." />
@@ -93,7 +92,7 @@
         <label for="pillar3">Pillar</label>
         <select name="pillar" id="pillar3">
           <% allPillars.forEach(p => { %>
-            <option value="<%= p.key %>"><%= p.emoji %> <%= p.label %></option>
+            <option value="<%= p.key %>"><%= p.label %></option>
           <% }) %>
         </select>
       </div>

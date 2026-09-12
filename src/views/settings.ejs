@@ -48,7 +48,7 @@
         <label><%= label %></label>
         <select name="day<%= day %>">
           <% allPillars.forEach(p => { %>
-            <option value="<%= p.key %>" <%= weekdayPillarMap[day] === p.key ? 'selected' : '' %>><%= p.emoji %> <%= p.label %></option>
+            <option value="<%= p.key %>" <%= weekdayPillarMap[day] === p.key ? 'selected' : '' %>><%= p.label %></option>
           <% }) %>
         </select>
       </div>

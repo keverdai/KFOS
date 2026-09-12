@@ -9,7 +9,6 @@ const PILLARS = [
     level: 1,
     emoji: '💰',
     question: 'Does this help us acquire, retain, or get paid by a customer?',
-    color: '#1a7f37',
   },
   {
     key: 'product',
@@ -17,7 +16,6 @@ const PILLARS = [
     level: 2,
     emoji: '🧠',
     question: 'Does this make Keverd materially better?',
-    color: '#0969da',
   },
   {
     key: 'distribution',
@@ -25,7 +23,6 @@ const PILLARS = [
     level: 3,
     emoji: '📣',
     question: 'Does this increase our ability to reach customers?',
-    color: '#8250df',
   },
   {
     key: 'infrastructure',
@@ -33,7 +30,6 @@ const PILLARS = [
     level: 4,
     emoji: '⚙️',
     question: 'Does this make the company faster, safer, or more scalable?',
-    color: '#bf6a02',
   },
   {
     key: 'learning',
@@ -41,7 +37,6 @@ const PILLARS = [
     level: 5,
     emoji: '🔬',
     question: 'Does this give us information that changes a decision?',
-    color: '#0891b2',
   },
 ];
 
@@ -63,7 +58,6 @@ const PRIORITY_PSEUDO_PILLAR = {
   level: 0,
   emoji: '🎯',
   question: 'What is the single most important problem Keverd needs to solve right now?',
-  color: '#cf222e',
 };
 
 function getPillar(key) {

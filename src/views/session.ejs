@@ -23,12 +23,11 @@
 
 <div class="card">
   <h3>Resolution</h3>
-  <p class="small muted">Discussion &rarr; Decisions &rarr; Owner &rarr; Evidence &rarr; Outcome. A session isn't successful because you talked for two hours — it's successful because it produced a decision with an owner.</p>
   <form method="post" action="/sessions/<%= date %>">
     <label for="pillar">Pillar for this session</label>
     <select name="pillar" id="pillar">
       <% allPillars.forEach(p => { %>
-        <option value="<%= p.key %>" <%= (session ? session.pillar : (pillar && pillar.key)) === p.key ? 'selected' : '' %>><%= p.emoji %> <%= p.label %></option>
+        <option value="<%= p.key %>" <%= (session ? session.pillar : (pillar && pillar.key)) === p.key ? 'selected' : '' %>><%= p.label %></option>
       <% }) %>
     </select>
 
@@ -86,7 +85,7 @@
           <label for="pillar2">Pillar</label>
           <select name="pillar" id="pillar2">
             <% allPillars.forEach(p => { %>
-              <option value="<%= p.key %>" <%= (pillar && pillar.key === p.key) ? 'selected' : '' %>><%= p.emoji %> <%= p.label %></option>
+              <option value="<%= p.key %>" <%= (pillar && pillar.key === p.key) ? 'selected' : '' %>><%= p.label %></option>
             <% }) %>
           </select>
         </div>

@@ -6,6 +6,7 @@ const settings = require('./lib/settings');
 const { getPillar } = require('./lib/pillars');
 const basicAuth = require('./lib/auth');
 
+const guideRoutes = require('./routes/guide');
 const todayRoutes = require('./routes/today');
 const sessionRoutes = require('./routes/sessions');
 const commitmentRoutes = require('./routes/commitments');
@@ -30,21 +31,23 @@ app.use('/css', express.static(path.join(__dirname, '..', 'public', 'css')));
 app.use((req, res, next) => {
   res.locals.companyName = settings.get('company_name', 'Keverd');
   res.locals.flash = req.query.flash || null;
+  // Status is conveyed by glyph + border style, never by hue — the UI is
+  // strictly black/white/gray in both themes.
   res.locals.STATUS_LABELS = {
-    open: { emoji: '⚪', label: 'Open', cls: 'open' },
-    green: { emoji: '🟢', label: 'Done', cls: 'green' },
-    yellow: { emoji: '🟡', label: 'Progressing', cls: 'yellow' },
-    red: { emoji: '🔴', label: 'Missed', cls: 'red' },
-    cancelled: { emoji: '⚪', label: 'Cancelled', cls: 'cancelled' },
+    open: { icon: '○', label: 'Open', cls: 'open' },
+    green: { icon: '●', label: 'Done', cls: 'green' },
+    yellow: { icon: '◐', label: 'Progressing', cls: 'yellow' },
+    red: { icon: '✕', label: 'Missed', cls: 'red' },
+    cancelled: { icon: '–', label: 'Cancelled', cls: 'cancelled' },
   };
   res.locals.pillarTagHtml = (pillarKey) => {
     const p = getPillar(pillarKey);
     if (!p) return '';
-    return `<span class="pillar-tag pillar-${p.key}">${p.emoji} ${p.label}</span>`;
+    return `<span class="pillar-tag"><span class="ico">${p.emoji}</span> ${p.label}</span>`;
   };
   res.locals.statusBadgeHtml = (status) => {
     const s = res.locals.STATUS_LABELS[status] || res.locals.STATUS_LABELS.open;
-    return `<span class="status-badge status-${s.cls}">${s.emoji} ${s.label}</span>`;
+    return `<span class="status-badge status-${s.cls}"><span class="status-dot">${s.icon}</span> ${s.label}</span>`;
   };
   res.locals.formatDateNice = (dateStr) => {
     if (!dateStr) return '';
@@ -60,7 +63,8 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use('/', todayRoutes);
+app.use('/', guideRoutes);
+app.use('/today', todayRoutes);
 app.use('/sessions', sessionRoutes);
 app.use('/commitments', commitmentRoutes);
 app.use('/daily-log', dailyLogRoutes);

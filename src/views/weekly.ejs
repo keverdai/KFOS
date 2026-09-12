@@ -8,10 +8,12 @@
 
   <h3>Weekly score</h3>
   <div class="score-row">
-    <% pillarScores.forEach(({pillar, score}) => { %>
+    <% pillarScores.forEach(({pillar, score}) => {
+      const dot = score === 'green' ? '●' : score === 'yellow' ? '◐' : score === 'red' ? '✕' : score === 'cancelled' ? '–' : '○';
+    %>
       <div class="score-pill">
-        <div class="emoji"><%= score === 'green' ? '🟢' : score === 'yellow' ? '🟡' : score === 'red' ? '🔴' : '⚪' %></div>
-        <div><%= pillar.emoji %> <%= pillar.label %></div>
+        <div class="emoji status-dot"><%= dot %></div>
+        <div><span class="ico"><%= pillar.emoji %></span> <%= pillar.label %></div>
         <div class="small muted"><%= score ? score : 'no commitments' %></div>
       </div>
     <% }) %>
@@ -19,7 +21,7 @@
 </div>
 
 <% days.forEach(d => { %>
-  <div class="card day-block" style="border-left-color: <%= d.pillar ? d.pillar.color : '#ccc' %>">
+  <div class="card day-block<%= d.pillar ? '' : ' muted' %>">
     <div class="hero">
       <div>
         <div class="date"><%= formatDateNice(d.date) %></div>

@@ -6,7 +6,6 @@
     <a href="/scorecard?date=<%= thisWeek %>" class="small">(this week)</a>
   </div>
   <h2>Founder Scorecard</h2>
-  <p class="small muted">Five things, not twenty: time, commitments, evidence, outcomes, ownership. Hours are one input — not the primary performance metric. Someone can work 30 hours and accomplish nothing.</p>
 </div>
 
 <div class="grid cols-3">
@@ -22,7 +21,7 @@
       <p class="small"><strong>Commitments</strong><br/>
         <%= r.delivered %> delivered / <%= r.commitmentTotal %> owned
         <% if (r.deliveryRate !== null) { %> (<%= r.deliveryRate %>%)<% } %>
-        <% if (r.missed > 0) { %><br/><span style="color:var(--red)"><%= r.missed %> missed</span><% } %>
+        <% if (r.missed > 0) { %><br/><strong><%= r.missed %> missed</strong><% } %>
       </p>
 
       <p class="small"><strong>Evidence</strong><br/>
@@ -30,9 +29,4 @@
       </p>
     </div>
   <% }) %>
-</div>
-
-<div class="card">
-  <h3>Reading the scorecard</h3>
-  <p class="small muted">A repeatedly 🔴 founder isn't automatically a problem — investigate the pattern: unrealistic commitments, unclear priorities, a real blocker, or a role not being fulfilled. The system's job is to expose the pattern, not to punish a single miss.</p>
 </div>

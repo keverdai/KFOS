@@ -1,0 +1,161 @@
+<article class="guide">
+  <header class="guide-head">
+    <p class="eyebrow">Read this first</p>
+    <h1>What KFOS is, and how we run it</h1>
+    <p class="lede">
+      KFOS is Keverd's operating system for a three-person, pre-revenue team.
+      It is not a task manager, and it isn't here to prove anyone sat at a
+      desk for six hours. It exists to make one thing visible every day:
+      did this move the company forward, and where's the evidence?
+    </p>
+  </header>
+
+  <section>
+    <h2>Why this exists</h2>
+    <p>
+      We're pre-revenue with three founders and a mandate to put in real
+      hours every day. A task list rewards whoever finishes the most small,
+      easy things — not whoever moved the company. So instead of counting
+      tasks, KFOS tracks <strong>evidence against a fixed priority order</strong>:
+    </p>
+    <ol class="priority-list">
+      <li><strong>Revenue</strong> — does this help us acquire, retain, or get paid by a customer?</li>
+      <li><strong>Product</strong> — does this make Keverd materially better?</li>
+      <li><strong>Distribution</strong> — does this increase our ability to reach customers?</li>
+      <li><strong>Infrastructure</strong> — does this make the company faster, safer, or more scalable?</li>
+      <li><strong>Learning</strong> — does this give us information that changes a decision?</li>
+      <li class="muted">Everything else — probably don't do it.</li>
+    </ol>
+    <p>
+      When two pieces of work compete for the same hour, the one serving the
+      higher pillar on this list wins. That's the whole decision rule.
+    </p>
+  </section>
+
+  <section>
+    <h2>The five pillars</h2>
+    <div class="pillar-grid">
+      <% PILLARS.forEach(p => { %>
+        <div class="pillar-card">
+          <div class="pillar-card-head"><span class="ico"><%= p.emoji %></span> <%= p.label %></div>
+          <p class="small muted"><%= p.question %></p>
+        </div>
+      <% }) %>
+    </div>
+    <p class="small muted">
+      A sixth slot, <span class="ico"><%= PRIORITY_PSEUDO_PILLAR.emoji %></span> <strong>Founder Priority</strong>,
+      runs on Thursdays: whatever is the single most important problem right
+      now, even if it doesn't sit neatly in one pillar.
+    </p>
+  </section>
+
+  <section>
+    <h2>How the week runs</h2>
+    <table class="guide-table">
+      <tr><th>Day</th><th>Pillar</th><th>What happens</th></tr>
+      <tr><td>Mon</td><td><span class="ico">💰</span> Revenue</td><td>Session on pipeline, customers, pricing, objections.</td></tr>
+      <tr><td>Tue</td><td><span class="ico">🧠</span> Product</td><td>Session on what's weak, what's blocking adoption, what to build or not build.</td></tr>
+      <tr><td>Wed</td><td><span class="ico">📣</span> Distribution</td><td>Session on how people discover Keverd — outbound, content, partnerships.</td></tr>
+      <tr><td>Thu</td><td><span class="ico">🎯</span> Founder Priority</td><td>Whatever matters most this week, decided by that day's owner.</td></tr>
+      <tr><td>Fri</td><td><span class="ico">🔬</span> Learning + Review</td><td>Close the week: what moved, what didn't, what we learned, what changes.</td></tr>
+    </table>
+    <p>
+      Each session has an <strong>owner</strong> — the founder responsible for
+      that day's conversation. The pillar stays fixed to the weekday, but
+      ownership rotates fairly across the three of us, so nobody permanently
+      becomes "the sales person" or "the coding person." KFOS computes this
+      rotation automatically (see Settings for the schedule).
+    </p>
+    <p>
+      Owning a session means five things: come with a real objective, keep
+      the conversation from running in circles, force it into a decision,
+      write the resolution down, and follow up on it next time that pillar
+      comes around. The owner isn't personally on the hook for every
+      resulting task — they're on the hook for the conversation producing a
+      decision with an owner.
+    </p>
+  </section>
+
+  <section>
+    <h2>The rules</h2>
+    <ul class="rules-list">
+      <li>No commitment without an owner.</li>
+      <li>No completion without evidence.</li>
+      <li>No failure without learning.</li>
+      <li>If it isn't on the Commitments board, it isn't an official company commitment.</li>
+      <li>If you spend time on something, it must move one of the five pillars forward — if it doesn't, question why we're doing it.</li>
+      <li>Every working day produces evidence: something shipped, someone contacted, something validated, something learned, or a decision made.</li>
+      <li>We measure outcomes, not task counts.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>What counts as evidence</h2>
+    <p class="small muted">"I was thinking about the product for 3 hours" isn't evidence. "I investigated why X happens, tested three approaches, rejected two, and implemented Y" is. Evidence falls into five categories:</p>
+    <dl class="evidence-list">
+      <dt>Shipped</dt><dd>Something changed — a PR, a feature, a deployment, a document, a campaign.</dd>
+      <dt>Contacted</dt><dd>Someone outside Keverd was engaged — a prospect, partner, customer, expert.</dd>
+      <dt>Learned</dt><dd>You discovered something, with a conclusion attached — not "researched X," but "X means we should do Y."</dd>
+      <dt>Validated</dt><dd>You tested an assumption against reality and got a real answer.</dd>
+      <dt>Decided</dt><dd>A meaningful decision was made based on evidence, and why.</dd>
+    </dl>
+  </section>
+
+  <section>
+    <h2>The six hours</h2>
+    <p>
+      The requirement is <strong><%= dailyHourTarget %> hours of documented
+      productive contribution</strong> per working day — not six hours of
+      sitting at a desk. Two hours on customer calls, two hours building,
+      one hour of research, one hour documenting counts. So does five hours
+      on a major feature and one hour testing it. The Daily Founder Log
+      takes 5–10 minutes: hours plus evidence per pillar, biggest outcome,
+      biggest problem, and a decision for tomorrow.
+    </p>
+  </section>
+
+  <section>
+    <h2>Reading the scorecard and weekly score</h2>
+    <p class="small muted">
+      Commitments resolve to one of four states: <strong>done</strong> (evidence
+      exists), <strong>progressing</strong> (real work happened, not finished),
+      <strong>missed</strong> (it wasn't delivered), or <strong>cancelled</strong>
+      (deliberately dropped, with a reason — that's good startup behavior, not
+      failure, as long as it's explicit rather than something that quietly
+      disappeared). The weekly score on each pillar rolls this up. A founder
+      repeatedly missing commitments isn't automatically a problem — it's a
+      signal to investigate why: unclear priorities, an unrealistic
+      commitment, a real blocker, or a role not being fulfilled.
+    </p>
+  </section>
+
+  <section class="guide-nav">
+    <h2>Where to go</h2>
+    <div class="grid cols-3">
+      <a class="card link-card" href="/today">
+        <strong>Today</strong>
+        <span class="small muted">Today's pillar, session owner, and what's due.</span>
+      </a>
+      <a class="card link-card" href="/commitments">
+        <strong>Commitments</strong>
+        <span class="small muted">The single board of truth — every commitment, owner, status.</span>
+      </a>
+      <a class="card link-card" href="/daily-log">
+        <strong>Daily Log</strong>
+        <span class="small muted">Record your hours and evidence for the day.</span>
+      </a>
+      <a class="card link-card" href="/weekly">
+        <strong>Weekly Log</strong>
+        <span class="small muted">The compiled Mon–Fri record and pillar score.</span>
+      </a>
+      <a class="card link-card" href="/scorecard">
+        <strong>Scorecard</strong>
+        <span class="small muted">Per-founder hours, commitments, and evidence.</span>
+      </a>
+      <a class="card link-card" href="/settings">
+        <strong>Settings</strong>
+        <span class="small muted">Names, rotation schedule, hour target.</span>
+      </a>
+    </div>
+  </section>
+</article>
