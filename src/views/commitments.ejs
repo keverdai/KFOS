@@ -1,90 +1,130 @@
-<div class="card">
-  <h2>Commitments Board</h2>
-
-  <form method="get" action="/commitments" class="grid cols-3">
-    <div>
-      <label for="status">Status</label>
-      <select name="status" id="status" onchange="this.form.submit()">
-        <option value="">All</option>
-        <option value="open" <%= filters.status === 'open' ? 'selected' : '' %>>Open</option>
-        <option value="green" <%= filters.status === 'green' ? 'selected' : '' %>>Done</option>
-        <option value="yellow" <%= filters.status === 'yellow' ? 'selected' : '' %>>Progressing</option>
-        <option value="red" <%= filters.status === 'red' ? 'selected' : '' %>>Missed</option>
-        <option value="cancelled" <%= filters.status === 'cancelled' ? 'selected' : '' %>>Cancelled</option>
-      </select>
-    </div>
-    <div>
-      <label for="owner">Owner</label>
-      <select name="owner" id="owner" onchange="this.form.submit()">
+<div class="card commitments-board">
+  <div class="board-toolbar">
+    <h2 class="board-title">Commitments</h2>
+    <form method="get" action="/commitments" class="board-filters">
+      <% if (filters.attention) { %>
+        <input type="hidden" name="attention" value="<%= filters.attention %>" />
+        <span class="attention-filter-badge" aria-label="Active filter">
+          <%= filters.attention === 'overdue' ? '⚠️' : '⏳' %> <%= attentionLabel %>
+          <a href="<%= clearAttentionHref %>" aria-label="Clear attention filter">&times;</a>
+        </span>
+      <% } else { %>
+        <select name="status" id="status" aria-label="Filter by status" onchange="this.form.submit()">
+          <option value="">All statuses</option>
+          <option value="open" <%= filters.status === 'open' ? 'selected' : '' %>>Open</option>
+          <option value="green" <%= filters.status === 'green' ? 'selected' : '' %>>Done</option>
+          <option value="yellow" <%= filters.status === 'yellow' ? 'selected' : '' %>>Progressing</option>
+          <option value="red" <%= filters.status === 'red' ? 'selected' : '' %>>Missed</option>
+          <option value="cancelled" <%= filters.status === 'cancelled' ? 'selected' : '' %>>Cancelled</option>
+        </select>
+      <% } %>
+      <select name="owner" id="owner" aria-label="Filter by owner" onchange="this.form.submit()">
         <option value="">Everyone</option>
         <% founders.forEach(f => { %>
           <option value="<%= f.id %>" <%= String(filters.owner) === String(f.id) ? 'selected' : '' %>><%= f.name %> (<%= f.role %>)</option>
         <% }) %>
       </select>
-    </div>
-    <div>
-      <label for="pillar">Pillar</label>
-      <select name="pillar" id="pillar" onchange="this.form.submit()">
-        <option value="">All</option>
+      <select name="pillar" id="pillar" aria-label="Filter by pillar" onchange="this.form.submit()">
+        <option value="">All pillars</option>
         <% allPillars.forEach(p => { %>
           <option value="<%= p.key %>" <%= filters.pillar === p.key ? 'selected' : '' %>><%= p.label %></option>
         <% }) %>
       </select>
+    </form>
+    <button type="button" class="btn small" id="open-add-commitment">+ Add</button>
+  </div>
+
+  <% if (pagination.total === 0) { %>
+    <p class="muted small">No commitments match this filter.</p>
+  <% } else { %>
+    <div class="table-wrap">
+      <table class="commitments-table">
+        <thead>
+          <tr>
+            <th class="col-pillar">Pillar</th>
+            <th class="col-commitment">Commitment</th>
+            <th class="col-owner">Owner</th>
+            <th class="col-due">Due</th>
+            <th class="col-status">Status</th>
+            <th class="col-evidence">Evidence</th>
+            <th class="col-actions"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% commitments.forEach(c => {
+            const f = founders.find(f=>f.id===c.owner_founder_id);
+            const overdue = c.due_date && c.due_date < todayStr && !['green','cancelled'].includes(c.status);
+          %>
+            <tr id="c<%= c.id %>">
+              <td class="col-pillar" data-label="Pillar"><%- pillarTagHtml(c.pillar) %></td>
+              <td class="col-commitment" data-label="Commitment">
+                <strong><%= c.description %></strong>
+                <% if (c.definition_of_done) { %><div class="small muted cell-dod">DoD: <%= c.definition_of_done %></div><% } %>
+              </td>
+              <td class="col-owner" data-label="Owner"><%= f ? f.role : '—' %></td>
+              <td class="col-due <%= overdue ? 'overdue' : 'muted' %>" data-label="Due">
+                <%= c.due_date ? formatDateNice(c.due_date) : '—' %><%= overdue ? ' (overdue)' : '' %>
+              </td>
+              <td class="col-status" data-label="Status"><%- statusBadgeHtml(c.status) %></td>
+              <td class="col-evidence cell-evidence" data-label="Evidence">
+                <% if (c.evidence) { %><%- linkifyEvidenceHtml(c.evidence) %><% } else { %><span class="muted">—</span><% } %>
+              </td>
+              <td class="col-actions" data-label="">
+                <details class="row-update">
+                  <summary class="small">Update</summary>
+                  <form method="post" action="/commitments/<%= c.id %>/status" class="row-update-form">
+                    <label>Status</label>
+                    <select name="status">
+                      <option value="open" <%= c.status==='open'?'selected':'' %>>Open</option>
+                      <option value="green" <%= c.status==='green'?'selected':'' %>>Done</option>
+                      <option value="yellow" <%= c.status==='yellow'?'selected':'' %>>Progressing</option>
+                      <option value="red" <%= c.status==='red'?'selected':'' %>>Missed</option>
+                      <option value="cancelled" <%= c.status==='cancelled'?'selected':'' %>>Cancelled</option>
+                    </select>
+                    <label>Evidence</label>
+                    <input type="text" name="evidence" value="<%= c.evidence %>" placeholder="link, PR, CRM entry, etc." />
+                    <label>Note (e.g. why cancelled/missed)</label>
+                    <input type="text" name="status_note" value="<%= c.status_note %>" />
+                    <button class="btn small" type="submit">Save</button>
+                  </form>
+                </details>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
     </div>
-  </form>
+
+    <% if (pagination.totalPages > 1) { %>
+      <nav class="pagination" aria-label="Commitments pages">
+        <% if (pagination.page > 1) { %>
+          <a class="pagination-link" href="<%= pageHref(pagination.page - 1) %>">&larr; Prev</a>
+        <% } else { %>
+          <span class="pagination-link disabled">&larr; Prev</span>
+        <% } %>
+        <span class="pagination-info">
+          <%= pagination.from %>–<%= pagination.to %> of <%= pagination.total %>
+          · Page <%= pagination.page %>/<%= pagination.totalPages %>
+        </span>
+        <% if (pagination.page < pagination.totalPages) { %>
+          <a class="pagination-link" href="<%= pageHref(pagination.page + 1) %>">Next &rarr;</a>
+        <% } else { %>
+          <span class="pagination-link disabled">Next &rarr;</span>
+        <% } %>
+      </nav>
+    <% } %>
+  <% } %>
 </div>
 
-<div class="card">
-  <table>
-    <tr><th>Pillar</th><th>Commitment</th><th>Owner</th><th>Due</th><th>Status</th><th>Evidence</th><th></th></tr>
-    <% commitments.forEach(c => {
-      const f = founders.find(f=>f.id===c.owner_founder_id);
-      const overdue = c.due_date && c.due_date < todayStr && !['green','cancelled'].includes(c.status);
-    %>
-      <tr id="c<%= c.id %>">
-        <td><%- pillarTagHtml(c.pillar) %></td>
-        <td>
-          <strong><%= c.description %></strong>
-          <% if (c.definition_of_done) { %><div class="small muted">DoD: <%= c.definition_of_done %></div><% } %>
-        </td>
-        <td><%= f ? f.role : '—' %></td>
-        <td class="<%= overdue ? 'small' : 'small muted' %>" style="<%= overdue ? 'font-weight:700;text-decoration:underline' : '' %>">
-          <%= c.due_date ? formatDateNice(c.due_date) : '—' %><%= overdue ? ' (overdue)' : '' %>
-        </td>
-        <td><%- statusBadgeHtml(c.status) %></td>
-        <td class="small muted"><%= c.evidence %></td>
-        <td>
-          <details>
-            <summary class="small">Update</summary>
-            <form method="post" action="/commitments/<%= c.id %>/status" style="min-width:220px">
-              <label>Status</label>
-              <select name="status">
-                <option value="open" <%= c.status==='open'?'selected':'' %>>Open</option>
-                <option value="green" <%= c.status==='green'?'selected':'' %>>Done</option>
-                <option value="yellow" <%= c.status==='yellow'?'selected':'' %>>Progressing</option>
-                <option value="red" <%= c.status==='red'?'selected':'' %>>Missed</option>
-                <option value="cancelled" <%= c.status==='cancelled'?'selected':'' %>>Cancelled</option>
-              </select>
-              <label>Evidence</label>
-              <input type="text" name="evidence" value="<%= c.evidence %>" placeholder="link, PR, CRM entry, etc." />
-              <label>Note (e.g. why cancelled/missed)</label>
-              <input type="text" name="status_note" value="<%= c.status_note %>" />
-              <button class="btn small" type="submit">Save</button>
-            </form>
-          </details>
-        </td>
-      </tr>
-    <% }) %>
-  </table>
-  <% if (commitments.length === 0) { %><p class="muted small">No commitments match this filter.</p><% } %>
-</div>
-
-<div class="card">
-  <h3>Add a standalone commitment</h3>
-  <p class="small muted">Prefer adding commitments from a session (Today &rarr; session) so they're tied to a resolution — use this for ad-hoc commitments.</p>
-  <form method="post" action="/commitments/new">
+<dialog id="add-commitment-modal" class="modal">
+  <form method="post" action="/commitments/new" class="modal-form">
+    <div class="modal-head">
+      <h3>Add a standalone commitment</h3>
+      <button type="button" class="modal-close" aria-label="Close">&times;</button>
+    </div>
+    <p class="small muted modal-note">Prefer adding commitments from a session (Today &rarr; session) so they're tied to a resolution — use this for ad-hoc commitments.</p>
     <label for="description">Commitment</label>
-    <input type="text" name="description" id="description" required />
+    <input type="text" name="description" id="description" required autofocus />
     <label for="definition_of_done">Definition of done</label>
     <input type="text" name="definition_of_done" id="definition_of_done" />
     <div class="grid cols-3">
@@ -109,6 +149,30 @@
         <input type="date" name="due_date" id="due3" />
       </div>
     </div>
-    <button class="btn" type="submit">Add</button>
+    <div class="modal-actions">
+      <button type="button" class="btn secondary modal-cancel">Cancel</button>
+      <button class="btn" type="submit">Add</button>
+    </div>
   </form>
-</div>
+</dialog>
+
+<script>
+  (function () {
+    var dialog = document.getElementById('add-commitment-modal');
+    var openBtn = document.getElementById('open-add-commitment');
+    if (!dialog || !openBtn) return;
+
+    function closeModal() { dialog.close(); }
+
+    openBtn.addEventListener('click', function () { dialog.showModal(); });
+    dialog.querySelector('.modal-close').addEventListener('click', closeModal);
+    dialog.querySelector('.modal-cancel').addEventListener('click', closeModal);
+    dialog.addEventListener('click', function (e) {
+      if (e.target === dialog) closeModal();
+    });
+    dialog.addEventListener('cancel', function (e) {
+      e.preventDefault();
+      closeModal();
+    });
+  })();
+</script>

@@ -60,6 +60,35 @@ app.use((req, res, next) => {
       timeZone: 'UTC',
     });
   };
+  res.locals.escapeHtml = (str) => String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+  res.locals.linkifyEvidenceHtml = (text) => {
+    if (!text) return '';
+    const escapeHtml = res.locals.escapeHtml;
+    const chunks = String(text).split(/\s*,\s*|\n+/).filter((s) => s.trim());
+    const items = chunks.map((chunk) => {
+      const trimmed = chunk.trim();
+      if (/^https?:\/\/.+/i.test(trimmed)) {
+        let label;
+        try {
+          const u = new URL(trimmed);
+          const path = u.pathname === '/' ? '' : u.pathname;
+          label = u.hostname.replace(/^www\./, '') + path;
+          if (label.length > 48) label = `${label.slice(0, 48)}…`;
+        } catch {
+          label = trimmed.length > 48 ? `${trimmed.slice(0, 48)}…` : trimmed;
+        }
+        const safeUrl = escapeHtml(trimmed);
+        return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" title="${safeUrl}">${escapeHtml(label)}</a>`;
+      }
+      return `<span>${escapeHtml(trimmed)}</span>`;
+    });
+    if (items.length === 1) return items[0];
+    return `<span class="evidence-links">${items.join('')}</span>`;
+  };
   next();
 });
 
