@@ -1,6 +1,6 @@
 const path = require('path');
 const express = require('express');
-
+const expressLayouts = require('express-ejs-layouts');
 
 const settings = require('./lib/settings');
 const { getPillar } = require('./lib/pillars');
