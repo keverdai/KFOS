@@ -1,6 +1,6 @@
 const path = require('path');
 const express = require('express');
-const expressLayouts = require('express-ejs-layouts');
+
 
 const settings = require('./lib/settings');
 const { getPillar } = require('./lib/pillars');
@@ -16,16 +16,18 @@ const scorecardRoutes = require('./routes/scorecard');
 const settingsRoutes = require('./routes/settings');
 
 const app = express();
+app.set('trust proxy', 1);
+
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.use(expressLayouts);
 app.set('layout', 'layout');
 
-app.use(basicAuth);
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use('/css', express.static(path.join(__dirname, '..', 'public', 'css')));
+app.use(basicAuth);
 
 // Global template helpers / locals
 app.use((req, res, next) => {

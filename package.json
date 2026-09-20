@@ -19,6 +19,7 @@
   },
   "homepage": "https://github.com/keverdai/KFOS#readme",
   "dependencies": {
+    "@keverdjs/node": "^1.0.1",
     "better-sqlite3": "^13.0.3",
     "ejs": "^6.0.1",
     "express": "^5.2.1",

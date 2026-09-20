@@ -99,22 +99,32 @@ until it's actually hosted somewhere reachable (next section).
 - `KFOS_AUTH_USERNAME` — username to pair with it (default `keverd`)
 - `TURSO_DATABASE_URL` — hosted SQLite URL (use this on Render’s free plan; see below)
 - `TURSO_AUTH_TOKEN` — Turso auth token paired with that URL
+- `KEVERD_PUBLIC_KEY` — browser collect key (`kv_pk_test_…` / `kv_pk_live_…`) for login device ID
+- `KEVERD_SECRET_KEY` — server verify key (`kv_sk_…`); never expose this in the browser
 
 ## Password protection
 
 The app has **no login by default** — fine for `localhost`, not fine once
 it's reachable by URL, since anyone with the link could read or edit every
-commitment and daily log. Setting `KFOS_AUTH_PASSWORD` turns on a single
-shared HTTP Basic Auth login for the whole app (all 3 of you use the same
-username/password):
+commitment and daily log. Setting `KFOS_AUTH_PASSWORD` turns on a dedicated
+`/login` page (shared username/password for the whole team):
 
 ```bash
 KFOS_AUTH_USERNAME=keverd KFOS_AUTH_PASSWORD='choose-a-real-password' npm start
 ```
 
-Every route — including static assets — requires that login once it's set.
-Set both as environment variables on whatever host runs it (see below);
-don't commit a real password into the repo.
+A signed cookie keeps you signed in for 24 hours. Use **Sign out** in the
+nav when you're done. Don't commit a real password into the repo.
+
+### Optional: Keverd on login
+
+With both `KEVERD_PUBLIC_KEY` and `KEVERD_SECRET_KEY` set, the login page
+collects a device fingerprint via the [Keverd JS SDK](https://developer.keverd.com/quickstart)
+and the server verifies the `event_id` with
+[`@keverdjs/node`](https://developer.keverd.com/node-js). Event details
+(device id, risk score, action, location signals) are logged on every
+sign-in. A `block` action rejects the login; other actions still allow
+password auth. Get keys at [dashboard.keverd.com](https://dashboard.keverd.com).
 
 ## Deploying for daily use
 

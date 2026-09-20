@@ -44,6 +44,11 @@
           <span class="theme-toggle-icon" aria-hidden="true"></span>
           <span class="theme-toggle-label">Theme</span>
         </button>
+        <% if (typeof authEnabled !== 'undefined' && authEnabled) { %>
+          <form method="post" action="/logout" class="logout-form">
+            <button type="submit" class="theme-toggle">Sign out</button>
+          </form>
+        <% } %>
       </nav>
     </div>
   </header>
