@@ -42,7 +42,7 @@ const sessions = {
          VALUES (?, ?, ?, ?, ?, ?)`
       )
       .run(date, pillar, owner_founder_id, objective, discussion, decisions);
-    return sessions.getById(info.lastInsertRowid);
+    return sessions.getById(Number(info.lastInsertRowid));
   },
   close(id) {
     db.prepare("UPDATE sessions SET closed = 1, updated_at = datetime('now') WHERE id = ?").run(id);
@@ -63,7 +63,7 @@ const commitments = {
          VALUES (?, ?, ?, ?, ?, ?)`
       )
       .run(session_id || null, pillar, description, definition_of_done || '', owner_founder_id || null, due_date || null);
-    return commitments.getById(info.lastInsertRowid);
+    return commitments.getById(Number(info.lastInsertRowid));
   },
   getById(id) {
     return db.prepare('SELECT * FROM commitments WHERE id = ?').get(id);
@@ -145,7 +145,7 @@ const commitments = {
       attention,
       asOfDate,
     });
-    return db.prepare(`SELECT COUNT(*) AS n${where}`).get(...params).n;
+    return Number(db.prepare(`SELECT COUNT(*) AS n${where}`).get(...params).n);
   },
   inRange(startDate, endDate) {
     return db
@@ -193,7 +193,7 @@ const dailyLogs = {
     const info = db
       .prepare(`INSERT INTO daily_logs (${cols.join(', ')}) VALUES (${placeholders})`)
       .run(entry);
-    return info.lastInsertRowid;
+    return Number(info.lastInsertRowid);
   },
   getByDateFounder(date, founderId) {
     return db.prepare('SELECT * FROM daily_logs WHERE date = ? AND founder_id = ?').get(date, founderId);

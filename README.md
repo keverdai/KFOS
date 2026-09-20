@@ -97,6 +97,8 @@ until it's actually hosted somewhere reachable (next section).
 - `KFOS_DB_PATH` — path to the SQLite file (default `data/kfos.db`)
 - `KFOS_AUTH_PASSWORD` — sets a shared password and turns on login (see below)
 - `KFOS_AUTH_USERNAME` — username to pair with it (default `keverd`)
+- `TURSO_DATABASE_URL` — hosted SQLite URL (use this on Render’s free plan; see below)
+- `TURSO_AUTH_TOKEN` — Turso auth token paired with that URL
 
 ## Password protection
 
@@ -116,13 +118,32 @@ don't commit a real password into the repo.
 
 ## Deploying for daily use
 
-This is a small stateful Node/Express app with a local SQLite file — the
-simplest path is a single always-on box or a platform with a persistent
-disk (a small VPS, Fly.io, Railway, Render with a persistent volume, etc.).
-Point `KFOS_DB_PATH` at a persisted volume if the platform's filesystem is
-ephemeral, and set `KFOS_AUTH_PASSWORD`/`KFOS_AUTH_USERNAME` there too. No
-external services, accounts, or API keys are required beyond the host
-itself.
+This is a small stateful Node/Express app. Locally it writes to `data/kfos.db`.
+On a host with a persistent disk (a VPS, Fly.io, Railway, Render **paid** with
+a volume), point `KFOS_DB_PATH` at that volume and set
+`KFOS_AUTH_PASSWORD`/`KFOS_AUTH_USERNAME`.
+
+### Render free plan (why data disappears)
+
+Render’s free web service has **no persistent disk**. The instance sleeps after
+inactivity and is rebuilt on deploys — anything written to `data/kfos.db` is
+deleted. A paid Render disk would fix this; on the free plan, store SQLite
+**off the box** with Turso (hosted libSQL, free tier):
+
+1. Create a database at [turso.tech](https://turso.tech) (`turso db create kfos`).
+2. Copy the URL and token:
+   `turso db show kfos --url`
+   `turso db tokens create kfos`
+3. In the Render dashboard → Environment, add:
+   - `TURSO_DATABASE_URL` = `libsql://….turso.io`
+   - `TURSO_AUTH_TOKEN` = the token
+   - `KFOS_AUTH_PASSWORD` / `KFOS_AUTH_USERNAME` (required once it’s public)
+4. Redeploy. Logs should say `KFOS database: Turso (hosted SQLite)`.
+
+Local `npm start` without those variables still uses the file on disk. Do not
+commit tokens. If you already have local data you want to keep, dump it and
+load it into Turso (`turso db shell kfos`) rather than expecting Render’s
+disk to survive.
 
 ## Project layout
 
