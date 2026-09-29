@@ -23,6 +23,9 @@
 
 <div class="card">
   <h3>Resolution</h3>
+  <% if (lastSavedBy) { %>
+    <p class="small muted">Last saved by <strong><%= lastSavedBy.name %></strong> (<%= lastSavedBy.role %>).</p>
+  <% } %>
   <form method="post" action="/sessions/<%= date %>">
     <label for="pillar">Pillar for this session</label>
     <select name="pillar" id="pillar">
@@ -58,10 +61,16 @@
   <% } else { %>
     <table>
       <tr><th>Pillar</th><th>Commitment</th><th>Definition of done</th><th>Owner</th><th>Due</th><th>Status</th></tr>
-      <% commitments.forEach(c => { const f = founders.find(f=>f.id===c.owner_founder_id); %>
+      <% commitments.forEach(c => {
+        const f = founders.find(f=>f.id===c.owner_founder_id);
+        const createdBy = allFoundersEverActive.find(f=>f.id===c.created_by_founder_id);
+      %>
         <tr>
           <td><%- pillarTagHtml(c.pillar) %></td>
-          <td><%= c.description %></td>
+          <td>
+            <%= c.description %>
+            <% if (createdBy) { %><div class="small muted">logged by <%= createdBy.name %></div><% } %>
+          </td>
           <td class="small muted"><%= c.definition_of_done %></td>
           <td><%= f ? f.role : '—' %></td>
           <td><%= c.due_date ? formatDateNice(c.due_date) : '—' %></td>

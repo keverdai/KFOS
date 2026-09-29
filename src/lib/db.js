@@ -16,7 +16,20 @@ CREATE TABLE IF NOT EXISTS founders (
   name TEXT NOT NULL,
   role TEXT NOT NULL,
   sort_order INTEGER NOT NULL,
-  active INTEGER NOT NULL DEFAULT 1
+  active INTEGER NOT NULL DEFAULT 1,
+  email TEXT,
+  password_hash TEXT
+);
+
+-- One row per logged-in browser session. A founder authenticates once with
+-- their own email + password (see lib/passwords.js) and everything they do
+-- afterward — daily log entries, commitment writes — is attributed to
+-- founder_id from here, never from a client-supplied value.
+CREATE TABLE IF NOT EXISTS auth_sessions (
+  token TEXT PRIMARY KEY,
+  founder_id INTEGER NOT NULL REFERENCES founders(id),
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  expires_at TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS settings (
@@ -33,6 +46,7 @@ CREATE TABLE IF NOT EXISTS sessions (
   discussion TEXT DEFAULT '',
   decisions TEXT DEFAULT '',
   closed INTEGER NOT NULL DEFAULT 0,
+  updated_by_founder_id INTEGER REFERENCES founders(id),
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -48,6 +62,8 @@ CREATE TABLE IF NOT EXISTS commitments (
   status TEXT NOT NULL DEFAULT 'open', -- open | green | yellow | red | cancelled
   evidence TEXT DEFAULT '',
   status_note TEXT DEFAULT '',
+  created_by_founder_id INTEGER REFERENCES founders(id),
+  status_updated_by_founder_id INTEGER REFERENCES founders(id),
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -77,17 +93,47 @@ CREATE TABLE IF NOT EXISTS daily_logs (
 CREATE INDEX IF NOT EXISTS idx_commitments_due ON commitments(due_date);
 CREATE INDEX IF NOT EXISTS idx_commitments_owner ON commitments(owner_founder_id);
 CREATE INDEX IF NOT EXISTS idx_daily_logs_date ON daily_logs(date);
+CREATE INDEX IF NOT EXISTS idx_auth_sessions_expires ON auth_sessions(expires_at);
 `);
+
+// CREATE TABLE IF NOT EXISTS never alters a table that already existed from
+// an earlier version of KFOS (e.g. before founder accounts existed) — add
+// any columns that migration needs, idempotently.
+function migrate() {
+  function addColumnIfMissing(table, column, ddl) {
+    const cols = db.prepare(`PRAGMA table_info(${table})`).all();
+    if (!cols.some((c) => c.name === column)) {
+      db.exec(`ALTER TABLE ${table} ADD COLUMN ${ddl}`);
+    }
+  }
+
+  addColumnIfMissing('founders', 'email', 'email TEXT');
+  addColumnIfMissing('founders', 'password_hash', 'password_hash TEXT');
+  addColumnIfMissing('sessions', 'updated_by_founder_id', 'updated_by_founder_id INTEGER REFERENCES founders(id)');
+  addColumnIfMissing('commitments', 'created_by_founder_id', 'created_by_founder_id INTEGER REFERENCES founders(id)');
+  addColumnIfMissing(
+    'commitments',
+    'status_updated_by_founder_id',
+    'status_updated_by_founder_id INTEGER REFERENCES founders(id)'
+  );
+
+  // Only safe to add once the email column above is guaranteed to exist.
+  db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_founders_email ON founders(email) WHERE email IS NOT NULL');
+}
 
 function seed() {
   const founderCount = db.prepare('SELECT COUNT(*) AS c FROM founders').get().c;
   if (founderCount === 0) {
+    // Seeded with placeholder emails and no password: whoever signs in with
+    // one of these addresses for the first time chooses their own password
+    // right there (see routes/auth.js) — that's how each founder claims
+    // their account. Update the email in Settings once you're in.
     const insert = db.prepare(
-      'INSERT INTO founders (name, role, sort_order) VALUES (?, ?, ?)'
+      'INSERT INTO founders (name, role, sort_order, email) VALUES (?, ?, ?, ?)'
     );
-    insert.run('CEO', 'CEO', 0);
-    insert.run('CTO', 'CTO', 1);
-    insert.run('COO', 'COO', 2);
+    insert.run('CEO', 'CEO', 0, 'ceo@keverd.com');
+    insert.run('CTO', 'CTO', 1, 'cto@keverd.com');
+    insert.run('COO', 'COO', 2, 'coo@keverd.com');
   }
 
   const defaults = {
@@ -112,6 +158,7 @@ function mondayOf(date) {
   return d;
 }
 
+migrate();
 seed();
 
 module.exports = db;

@@ -14,12 +14,16 @@ router.get('/', (req, res) => {
 
   const commitments = repo.commitments.all(filters);
   const founders = repo.founders.all(true);
+  // Include inactive founders too so old commitments still show a real name
+  // for "created by" / "updated by" instead of "unknown".
+  const allFoundersEverActive = repo.founders.all();
 
   res.render('commitments', {
     title: 'Commitments',
     active: 'commitments',
     commitments,
     founders,
+    allFoundersEverActive,
     allPillars: allPillarsIncludingPriority(),
     filters: { status: status || '', owner: owner || '', pillar: pillar || '' },
     todayStr: rotation.todayStr(),
@@ -34,13 +38,14 @@ router.post('/new', (req, res) => {
     definition_of_done: req.body.definition_of_done,
     owner_founder_id: req.body.owner_founder_id || null,
     due_date: req.body.due_date || null,
+    created_by_founder_id: req.founder.id,
   });
   res.redirect('/commitments?flash=Commitment added');
 });
 
 router.post('/:id/status', (req, res) => {
   const { status, evidence, status_note } = req.body;
-  repo.commitments.updateStatus(req.params.id, status, evidence, status_note);
+  repo.commitments.updateStatus(req.params.id, status, evidence, status_note, req.founder.id);
   res.redirect('/commitments?flash=Status updated#c' + req.params.id);
 });
 

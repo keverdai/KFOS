@@ -1,26 +1,16 @@
 <div class="card">
   <h2>Daily Founder Log</h2>
+  <p class="small muted">Logging as <strong><%= currentFounder.name %></strong> (<%= currentFounder.role %>).</p>
 
-  <form method="get" action="/daily-log" class="grid cols-2">
-    <div>
-      <label for="founder">Founder</label>
-      <select name="founder" id="founder" onchange="this.form.submit()">
-        <% founders.forEach(f => { %>
-          <option value="<%= f.id %>" <%= f.id === selectedFounderId ? 'selected' : '' %>><%= f.name %> (<%= f.role %>)</option>
-        <% }) %>
-      </select>
-    </div>
-    <div>
-      <label for="date">Date</label>
-      <input type="date" name="date" id="date" value="<%= date %>" onchange="this.form.submit()" />
-    </div>
+  <form method="get" action="/daily-log">
+    <label for="date">Date</label>
+    <input type="date" name="date" id="date" value="<%= date %>" onchange="this.form.submit()" />
   </form>
 </div>
 
 <div class="card">
   <form method="post" action="/daily-log">
     <input type="hidden" name="date" value="<%= date %>" />
-    <input type="hidden" name="founder_id" value="<%= selectedFounderId %>" />
 
     <% PILLARS.forEach(p => {
       const hoursField = p.key + '_hours';

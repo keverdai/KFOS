@@ -4,6 +4,9 @@ const router = express.Router();
 const repo = require('../lib/repo');
 const settings = require('../lib/settings');
 const { allPillarsIncludingPriority } = require('../lib/pillars');
+const { hashPassword, verifyPassword } = require('../lib/passwords');
+
+const MIN_PASSWORD_LENGTH = 8;
 
 router.get('/', (req, res) => {
   const founders = repo.founders.all();
@@ -16,6 +19,7 @@ router.get('/', (req, res) => {
     companyName: settings.get('company_name'),
     weekdayPillarMap: settings.getWeekdayPillarMap(),
     allPillars: allPillarsIncludingPriority(),
+    minPasswordLength: MIN_PASSWORD_LENGTH,
   });
 });
 
@@ -27,6 +31,52 @@ router.post('/founders/:id', (req, res) => {
 router.post('/founders/:id/active', (req, res) => {
   repo.founders.setActive(req.params.id, req.body.active === '1');
   res.redirect('/settings?flash=Founder updated');
+});
+
+// Password resets for a teammate (e.g. they're locked out) — clears their
+// password so their next successful login sets a fresh one, same as first
+// claiming the account. Never lets you reset your own this way; use the
+// Account section below for that (it requires your current password).
+router.post('/founders/:id/reset-password', (req, res) => {
+  const id = Number(req.params.id);
+  if (id === req.founder.id) {
+    return res.redirect('/settings?flash=Use the Account section below to change your own password');
+  }
+  repo.founders.clearPassword(id);
+  res.redirect('/settings?flash=Password reset — they\'ll set a new one next time they sign in');
+});
+
+// ---- Account (self-service only — identity-sensitive, so no editing
+// someone else's email or password from here) ----
+
+router.post('/account/email', (req, res) => {
+  const email = (req.body.email || '').trim();
+  if (!email) {
+    return res.redirect('/settings?flash=Email can\'t be empty');
+  }
+  const existing = repo.founders.getByEmail(email);
+  if (existing && existing.id !== req.founder.id) {
+    return res.redirect('/settings?flash=That email is already in use by another founder');
+  }
+  repo.founders.setEmail(req.founder.id, email);
+  res.redirect('/settings?flash=Email updated — use it next time you sign in');
+});
+
+router.post('/account/password', (req, res) => {
+  const founder = repo.founders.get(req.founder.id);
+  const { current_password, new_password, confirm_new_password } = req.body;
+
+  if (!verifyPassword(current_password || '', founder.password_hash)) {
+    return res.redirect('/settings?flash=Current password is incorrect');
+  }
+  if ((new_password || '').length < MIN_PASSWORD_LENGTH) {
+    return res.redirect(`/settings?flash=New password must be at least ${MIN_PASSWORD_LENGTH} characters`);
+  }
+  if (new_password !== confirm_new_password) {
+    return res.redirect('/settings?flash=New passwords don\'t match');
+  }
+  repo.founders.setPasswordHash(req.founder.id, hashPassword(new_password));
+  res.redirect('/settings?flash=Password updated');
 });
 
 router.post('/general', (req, res) => {

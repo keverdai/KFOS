@@ -39,6 +39,8 @@
     <tr><th>Pillar</th><th>Commitment</th><th>Owner</th><th>Due</th><th>Status</th><th>Evidence</th><th></th></tr>
     <% commitments.forEach(c => {
       const f = founders.find(f=>f.id===c.owner_founder_id);
+      const createdBy = allFoundersEverActive.find(f=>f.id===c.created_by_founder_id);
+      const updatedBy = allFoundersEverActive.find(f=>f.id===c.status_updated_by_founder_id);
       const overdue = c.due_date && c.due_date < todayStr && !['green','cancelled'].includes(c.status);
     %>
       <tr id="c<%= c.id %>">
@@ -46,12 +48,16 @@
         <td>
           <strong><%= c.description %></strong>
           <% if (c.definition_of_done) { %><div class="small muted">DoD: <%= c.definition_of_done %></div><% } %>
+          <% if (createdBy) { %><div class="small muted">logged by <%= createdBy.name %></div><% } %>
         </td>
         <td><%= f ? f.role : '—' %></td>
         <td class="<%= overdue ? 'small' : 'small muted' %>" style="<%= overdue ? 'font-weight:700;text-decoration:underline' : '' %>">
           <%= c.due_date ? formatDateNice(c.due_date) : '—' %><%= overdue ? ' (overdue)' : '' %>
         </td>
-        <td><%- statusBadgeHtml(c.status) %></td>
+        <td>
+          <%- statusBadgeHtml(c.status) %>
+          <% if (updatedBy) { %><div class="small muted">by <%= updatedBy.name %></div><% } %>
+        </td>
         <td class="small muted"><%= c.evidence %></td>
         <td>
           <details>

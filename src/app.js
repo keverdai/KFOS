@@ -4,8 +4,9 @@ const expressLayouts = require('express-ejs-layouts');
 
 const settings = require('./lib/settings');
 const { getPillar } = require('./lib/pillars');
-const basicAuth = require('./lib/auth');
+const auth = require('./lib/auth');
 
+const authRoutes = require('./routes/auth');
 const guideRoutes = require('./routes/guide');
 const todayRoutes = require('./routes/today');
 const sessionRoutes = require('./routes/sessions');
@@ -19,13 +20,15 @@ const app = express();
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
+app.set('trust proxy', 1); // so req.protocol reflects X-Forwarded-Proto behind a reverse proxy
 app.use(expressLayouts);
 app.set('layout', 'layout');
 
-app.use(basicAuth);
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use('/css', express.static(path.join(__dirname, '..', 'public', 'css')));
+
+app.use(auth.loadFounder);
 
 // Global template helpers / locals
 app.use((req, res, next) => {
@@ -62,6 +65,10 @@ app.use((req, res, next) => {
   };
   next();
 });
+
+app.use('/', authRoutes); // /login and /logout — reachable without a session
+
+app.use(auth.requireAuth); // everything below requires a signed-in founder
 
 app.use('/', guideRoutes);
 app.use('/today', todayRoutes);
