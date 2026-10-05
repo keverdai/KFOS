@@ -94,6 +94,11 @@
                     <button class="btn small" type="submit">Save</button>
                   </form>
                 </details>
+                <% if (f && f.email) { %>
+                  <form method="post" action="/commitments/<%= c.id %>/notify" style="margin-top:4px">
+                    <button class="btn small secondary" type="submit" title="Email <%= f.name %> about this commitment">Email <%= f.name %></button>
+                  </form>
+                <% } %>
               </td>
             </tr>
           <% }) %>

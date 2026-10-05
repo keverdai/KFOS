@@ -15,6 +15,7 @@ const dailyLogRoutes = require('./routes/dailyLog');
 const weeklyRoutes = require('./routes/weekly');
 const scorecardRoutes = require('./routes/scorecard');
 const settingsRoutes = require('./routes/settings');
+const emailRoutes = require('./routes/email');
 
 const app = express();
 app.set('trust proxy', 1); // so req.protocol reflects X-Forwarded-Proto behind a reverse proxy
@@ -107,6 +108,7 @@ app.use('/daily-log', dailyLogRoutes);
 app.use('/weekly', weeklyRoutes);
 app.use('/scorecard', scorecardRoutes);
 app.use('/settings', settingsRoutes);
+app.use('/email', emailRoutes);
 
 app.use((req, res) => {
   res.status(404).render('404', { title: 'Not found', active: '' });

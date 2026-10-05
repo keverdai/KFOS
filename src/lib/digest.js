@@ -134,33 +134,34 @@ function buildFounderDigest(founder, dateStr, sessionInfo) {
   return { subject, html, text, companyName, overdue, dueSoon, hasSession: Boolean(sessionInfo) };
 }
 
-// { onlyFounderId, force } -> array of { founder, email, sent, skipped?, error? }
-// - onlyFounderId: send to just that one founder (e.g. a "send me a preview" button)
-// - force: send even when there's nothing overdue/due soon and no session today
-//   (so a manual test send always produces an email)
-async function sendDailyDigest({ onlyFounderId, force = false } = {}) {
+// Manual-only — nothing in the app calls this on a timer. Someone presses
+// "send" on the Email page; this builds each selected founder's own
+// overdue/due-soon/today's-session content and hands it to the mailer's
+// fire-and-forget queueMail(), so the route can redirect immediately
+// instead of making that person wait on however long SMTP takes.
+//
+// { founderIds, force } -> array of { founder, email, queued, skipped? }
+// - founderIds: which founders to send to (defaults to everyone with an email)
+// - force: include a founder even when they have nothing overdue/due soon
+//   and there's no session today (off by default, so "send to everyone"
+//   doesn't spam an all-clear email at people with nothing to report)
+function queueAttentionDigest({ founderIds, force = false } = {}) {
   const dateStr = rotation.todayStr();
   const allFounders = repo.founders.all(true);
-  const recipients = allFounders.filter((f) => f.email && (!onlyFounderId || f.id === onlyFounderId));
+  const recipients = allFounders.filter(
+    (f) => f.email && (!founderIds || founderIds.includes(f.id))
+  );
   const sessionInfo = buildTodaySessionInfo(dateStr, allFounders);
 
-  const results = [];
-  for (const founder of recipients) {
-    const digest = buildFounderDigest(founder, dateStr, sessionInfo);
-    const nothingToReport = digest.overdue.length === 0 && digest.dueSoon.length === 0 && !digest.hasSession;
+  return recipients.map((founder) => {
+    const content = buildFounderDigest(founder, dateStr, sessionInfo);
+    const nothingToReport = content.overdue.length === 0 && content.dueSoon.length === 0 && !content.hasSession;
     if (nothingToReport && !force) {
-      results.push({ founder: founder.name, email: founder.email, sent: false, skipped: 'nothing-to-report' });
-      continue;
+      return { founder: founder.name, email: founder.email, queued: false, skipped: 'nothing-to-report' };
     }
-    const result = await mailer.sendMail({
-      to: founder.email,
-      subject: digest.subject,
-      html: digest.html,
-      text: digest.text,
-    });
-    results.push({ founder: founder.name, email: founder.email, ...result });
-  }
-  return results;
+    mailer.queueMail({ to: founder.email, subject: content.subject, html: content.html, text: content.text });
+    return { founder: founder.name, email: founder.email, queued: true };
+  });
 }
 
-module.exports = { buildTodaySessionInfo, buildFounderDigest, sendDailyDigest };
+module.exports = { buildTodaySessionInfo, buildFounderDigest, queueAttentionDigest };

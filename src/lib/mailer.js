@@ -31,6 +31,17 @@ function getTransporter() {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
       },
+      // A handful of founders, not a mailing list — one pooled connection
+      // reused across sends avoids a fresh TLS handshake per email.
+      pool: true,
+      maxConnections: 1,
+      // nodemailer's defaults here are minutes long (2min connect, 10min
+      // socket) — fine for a batch job, but deadly for a button someone is
+      // staring at waiting for a page to respond. Fail fast instead; the
+      // one retry above still gets a second shot at a slow handshake.
+      connectionTimeout: 8000,
+      greetingTimeout: 8000,
+      socketTimeout: 15000,
     });
   }
   return transporter;
@@ -70,4 +81,16 @@ async function sendMail({ to, subject, html, text }) {
   }
 }
 
-module.exports = { enabled, sendMail };
+// Fire-and-forget: starts the send and returns immediately, so a route
+// handler can redirect right away instead of making someone's browser sit
+// on a POST while SMTP does its (sometimes slow) thing. The eventual
+// result is only observable in server logs — fine for this app's low
+// volume and internal-tool stakes; sendMail() itself stays available for
+// callers (like a test-send) that do want to wait and report the outcome.
+function queueMail(args) {
+  sendMail(args).catch((err) => {
+    console.error(`[mailer] unexpected error sending "${args.subject}" to ${args.to}:`, err);
+  });
+}
+
+module.exports = { enabled, sendMail, queueMail };

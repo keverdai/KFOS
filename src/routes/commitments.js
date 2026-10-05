@@ -3,6 +3,8 @@ const router = express.Router();
 
 const repo = require('../lib/repo');
 const rotation = require('../lib/rotation');
+const mailer = require('../lib/mailer');
+const { queueCommitmentNotification } = require('../lib/notify');
 const { allPillarsIncludingPriority } = require('../lib/pillars');
 
 const PAGE_SIZE = 8;
@@ -121,6 +123,24 @@ router.post('/:id/status', (req, res) => {
   const { status, evidence, status_note } = req.body;
   repo.commitments.updateStatus(req.params.id, status, evidence, status_note, req.founder.id);
   redirectBack(req, res, { flash: 'Status updated', hash: '#c' + req.params.id });
+});
+
+// Manual only — this is the one path that puts a commitment's details in
+// someone's inbox, and it only fires when a founder clicks this button.
+router.post('/:id/notify', (req, res) => {
+  const commitment = repo.commitments.getById(req.params.id);
+  if (!commitment) {
+    return redirectBack(req, res, { flash: 'Commitment not found' });
+  }
+  if (!mailer.enabled()) {
+    return redirectBack(req, res, { flash: "Email isn't configured yet — see README" });
+  }
+  const owner = commitment.owner_founder_id ? repo.founders.get(commitment.owner_founder_id) : null;
+  if (!owner || !owner.email) {
+    return redirectBack(req, res, { flash: 'This commitment has no owner with an email set' });
+  }
+  queueCommitmentNotification(commitment, owner, req.founder);
+  redirectBack(req, res, { flash: `Sending to ${owner.name}`, hash: '#c' + req.params.id });
 });
 
 module.exports = router;

@@ -74,6 +74,8 @@ configurable rotation start date; see `src/lib/rotation.js`.
 - **Settings** (`/settings`) — your own account (email + password), rename
   founders (seeded as CEO/CTO/COO), reset a teammate's password, company
   name, daily hour target, rotation start date, weekday→pillar map.
+- **Email** (`/email`) — send a custom message or an overdue/due-soon
+  summary, on demand — see **Email** below.
 
 ## Running it locally (try it out first)
 
@@ -95,8 +97,8 @@ placeholder emails — nothing else to configure).
 - `TURSO_AUTH_TOKEN` — Turso auth token paired with that URL
 - `KEVERD_PUBLIC_KEY` — browser collect key (`kv_pk_test_…` / `kv_pk_live_…`) for device checks on login
 - `KEVERD_SECRET_KEY` — server verify key (`kv_sk_…`); never expose this in the browser
-- `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` / `SMTP_FROM` / `SMTP_SECURE` — outbound email for the daily digest (see below)
-- `APP_BASE_URL` — e.g. `https://kfos.keverd.com`; used to build the link back into the app inside digest emails (links are relative if unset)
+- `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` / `SMTP_FROM` / `SMTP_SECURE` — outbound email (see **Email** below)
+- `APP_BASE_URL` — e.g. `https://kfos.keverd.com`; used to build the link back into the app inside emails (links are relative if unset)
 
 ## Founder accounts (how login works)
 
@@ -137,28 +139,37 @@ verdict from Keverd rejects the sign-in; a Keverd API error never does —
 login fails open rather than risking an outage there locking out the whole
 team. Get keys at [dashboard.keverd.com](https://dashboard.keverd.com).
 
-## Daily email digest
+## Email
 
-Each founder with an email on file (see **Founder accounts** above) can get
-one email a day: their own overdue and soon-due (within 3 days) commitments,
-plus a reminder of today's session — pillar, who's running it, and what to
-discuss. It's generated from the same data as **Today** and
-**Commitments**, nothing new to maintain.
+Nothing emails anyone automatically — every send here happens because
+someone clicked a button. There's no scheduler, no daily cron, no "digest
+hour" to configure. Three ways to send, all from **Email** (`/email`) or the
+commitments board:
+
+- **Custom message** (`/email`) — pick recipients, write a subject and a
+  message, send it. For anything that isn't one of the two below.
+- **Overdue & due-soon summary** (`/email`) — for each selected founder,
+  sends *their own* overdue and soon-due (within 3 days) commitments, plus
+  today's session (pillar, who's running it, what to discuss). A founder
+  with nothing to report is skipped unless you check "send anyway."
+- **Notify a commitment's owner** — an "Email [name]" button on each row of
+  the **Commitments** board sends that one commitment's details (what it
+  is, Definition of Done, due date) straight to its owner. Use it right
+  after adding a new commitment, or any time it needs a nudge.
 
 Off by default — nothing breaks if you skip this. To turn it on, set:
 
 - `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS` — any provider's SMTP relay (SendGrid,
-  Mailgun, Postmark, SES, Gmail, Office 365, a company mail server)
+  Mailgun, Postmark, SES, Brevo, Gmail, Office 365, a company mail server)
 - `SMTP_PORT` — default `587` (STARTTLS); use `465` for implicit TLS
 - `SMTP_FROM` — optional; defaults to `SMTP_USER`
 - `SMTP_SECURE` — optional override (`true`/`false`); inferred from the port otherwise
 
-Once set, **Settings → Daily email digest** lets you pick the send hour
-(server time, checked every few minutes — it catches up after the instance
-sleeps/restarts rather than needing a precise cron) and send yourself a
-preview. It sends at most once per day; a founder with nothing overdue, due
-soon, or no session today (weekends) gets skipped rather than an empty email,
-except for the manual preview, which always sends.
+Sending is fire-and-forget: clicking a send button returns immediately
+rather than making you wait on SMTP, which can be slow or occasionally
+flaky depending on the provider and network — the actual send happens in
+the background (one automatic retry on a transient connection error) and
+its outcome shows up in the server logs, not the page.
 
 ## Deploying for daily use
 
@@ -199,12 +210,13 @@ src/lib/settings.js       key/value settings helper
 src/lib/passwords.js      scrypt password hashing
 src/lib/auth.js           session cookies, loadFounder/requireAuth, login throttling
 src/lib/keverd.js         optional device-risk check, layered onto login (see above)
-src/lib/mailer.js         optional SMTP sending (see Daily email digest)
-src/lib/digest.js         builds each founder's daily digest email
-src/lib/scheduler.js      in-process daily check that sends the digest
+src/lib/mailer.js         optional SMTP sending, fire-and-forget (see Email)
+src/lib/digest.js         builds each founder's overdue/due-soon summary email
+src/lib/notify.js         builds a single commitment's "notify owner" email
 src/lib/repo.js           data access (founders, auth_sessions, sessions, commitments, daily_logs)
 src/routes/auth.js        /login, /logout
 src/routes/guide.js       landing page ('/')
+src/routes/email.js       /email — custom message + overdue/due-soon summary, manual send only
 src/routes/*              one file per other section
 src/views/*               EJS templates
 public/css/style.css      styling
