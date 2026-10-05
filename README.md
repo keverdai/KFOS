@@ -97,7 +97,8 @@ placeholder emails — nothing else to configure).
 - `TURSO_AUTH_TOKEN` — Turso auth token paired with that URL
 - `KEVERD_PUBLIC_KEY` — browser collect key (`kv_pk_test_…` / `kv_pk_live_…`) for device checks on login
 - `KEVERD_SECRET_KEY` — server verify key (`kv_sk_…`); never expose this in the browser
-- `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` / `SMTP_FROM` / `SMTP_SECURE` — outbound email (see **Email** below)
+- `BREVO_API_KEY` — send via Brevo's HTTP API instead of SMTP; **use this on Render's free plan** (see **Email** below for why)
+- `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` / `SMTP_FROM` / `SMTP_SECURE` — outbound email over SMTP instead (see **Email** below)
 - `APP_BASE_URL` — e.g. `https://kfos.keverd.com`; used to build the link back into the app inside emails (links are relative if unset)
 
 ## Founder accounts (how login works)
@@ -157,19 +158,35 @@ commitments board:
   is, Definition of Done, due date) straight to its owner. Use it right
   after adding a new commitment, or any time it needs a nudge.
 
-Off by default — nothing breaks if you skip this. To turn it on, set:
+Off by default — nothing breaks if you skip this. There are two ways to turn
+it on; **if you're on Render's free plan, use the first one** — Render
+blocks outbound traffic on every SMTP port (25, 465, 587) for free web
+services ([Render's changelog](https://render.com/changelog/free-web-services-will-no-longer-allow-outbound-traffic-to-smtp-ports)),
+so regular SMTP will just hang and time out there no matter which provider
+or how it's configured — it's not a credentials problem, the connection
+itself never completes.
 
+**Option 1 — Brevo's HTTP API (works on Render's free plan):**
+- `BREVO_API_KEY` — from Brevo's dashboard → SMTP & API → **API Keys** tab
+  (a different key from the SMTP key — generate one here if you don't have
+  one). This sends over plain HTTPS, which isn't port-blocked.
+- `SMTP_FROM` — the sender address Brevo emails appear to come from; must be
+  a verified sender in Brevo (Senders & IP → Senders), or just use your
+  Brevo login email, which is already verified.
+
+**Option 2 — generic SMTP (works anywhere except Render's free plan):**
 - `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS` — any provider's SMTP relay (SendGrid,
   Mailgun, Postmark, SES, Brevo, Gmail, Office 365, a company mail server)
 - `SMTP_PORT` — default `587` (STARTTLS); use `465` for implicit TLS
 - `SMTP_FROM` — optional; defaults to `SMTP_USER`
 - `SMTP_SECURE` — optional override (`true`/`false`); inferred from the port otherwise
 
+If both `BREVO_API_KEY` and the `SMTP_*` vars are set, Brevo's API wins.
+
 Sending is fire-and-forget: clicking a send button returns immediately
-rather than making you wait on SMTP, which can be slow or occasionally
-flaky depending on the provider and network — the actual send happens in
-the background (one automatic retry on a transient connection error) and
-its outcome shows up in the server logs, not the page.
+rather than making you wait on it — the actual send happens in the
+background (up to 2 retries on a transient failure) and its outcome shows
+up in the server logs, not the page.
 
 ## Deploying for daily use
 
