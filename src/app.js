@@ -107,4 +107,14 @@ app.use((req, res) => {
   res.status(404).render('404', { title: 'Not found', active: '' });
 });
 
+// Safety net: an unhandled error in any route (sync throw or rejected
+// promise — Express 5 forwards both here automatically) gets logged and
+// turned into a clean response instead of leaking a raw stack/crash to
+// whoever's browser triggered it.
+app.use((err, req, res, next) => {
+  console.error(`[error] ${req.method} ${req.originalUrl}:`, err);
+  if (res.headersSent) return next(err);
+  res.status(500).send('Something went wrong on our end. Please try again.');
+});
+
 module.exports = app;
