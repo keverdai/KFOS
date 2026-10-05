@@ -36,6 +36,16 @@ function getTransporter() {
   return transporter;
 }
 
+// Errors worth one retry: transient connection issues (a slow DNS/TCP
+// handshake right as the Render instance wakes from sleep, a dropped
+// socket). A bad password (EAUTH) or a rejected recipient won't fix itself
+// on retry, so those fail immediately instead of doubling the wait.
+const RETRYABLE_CODES = new Set(['ETIMEDOUT', 'ESOCKET', 'ECONNECTION', 'ECONNRESET']);
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 // { to, subject, html, text } -> { sent: boolean, skipped?: true, error? }
 async function sendMail({ to, subject, html, text }) {
   const t = getTransporter();
@@ -43,13 +53,20 @@ async function sendMail({ to, subject, html, text }) {
     console.log(`[mailer] SMTP not configured, skipping email to ${to}: ${subject}`);
     return { sent: false, skipped: true };
   }
-  try {
-    await t.sendMail({ from: fromAddress(), to, subject, html, text });
-    console.log(`[mailer] sent "${subject}" to ${to}`);
-    return { sent: true };
-  } catch (err) {
-    console.error(`[mailer] failed to send "${subject}" to ${to}:`, err);
-    return { sent: false, error: err };
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      await t.sendMail({ from: fromAddress(), to, subject, html, text });
+      console.log(`[mailer] sent "${subject}" to ${to}`);
+      return { sent: true };
+    } catch (err) {
+      const willRetry = attempt === 1 && RETRYABLE_CODES.has(err.code);
+      console.error(
+        `[mailer] failed to send "${subject}" to ${to} (attempt ${attempt})${willRetry ? ', retrying' : ''}:`,
+        err
+      );
+      if (!willRetry) return { sent: false, error: err };
+      await sleep(3000);
+    }
   }
 }
 

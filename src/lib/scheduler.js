@@ -25,11 +25,16 @@ async function tick() {
 
   try {
     const results = await digest.sendDailyDigest();
-    // Only recorded on success — a thrown error (vs. a per-founder send
-    // failure, which sendDailyDigest already reports in its results array
-    // without throwing) leaves today unmarked so the next tick retries.
-    settings.set('digest_last_sent_date', today);
-    console.log('[scheduler] daily digest sent', results);
+    console.log('[scheduler] daily digest run', results);
+    // sendDailyDigest() never throws for a per-founder send failure (mailer
+    // already catches those and reports them in the results array), so a
+    // thrown error here is something else entirely. Either way, only mark
+    // today done once every recipient actually got their email or was
+    // deliberately skipped (nothing to report) — any real send failure
+    // leaves today unmarked so the next tick (a few minutes later) retries,
+    // rather than silently giving up on the whole day.
+    const anyFailed = results.some((r) => r.error);
+    if (!anyFailed) settings.set('digest_last_sent_date', today);
   } catch (err) {
     console.error('[scheduler] daily digest run failed, will retry', err);
   }
