@@ -151,6 +151,20 @@ function migrate() {
 
   // Only safe to add once the email column above is guaranteed to exist.
   db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_founders_email ON founders(email) WHERE email IS NOT NULL');
+
+  // A founders table that existed before this feature shipped got the email
+  // column added above with every row's value left NULL — the placeholder-
+  // email seeding below only ever runs on a table that's empty, so those
+  // pre-existing rows never get one and nobody can sign in at all. Backfill
+  // the same placeholder convention, matched by sort_order (fixed at seed
+  // time, never user-editable — unlike name/role) rather than by role text,
+  // and only where email is still unset so a real email already saved via
+  // Settings is never touched.
+  const placeholderEmailByOrder = { 0: 'ceo@keverd.com', 1: 'cto@keverd.com', 2: 'coo@keverd.com' };
+  const backfillEmail = db.prepare('UPDATE founders SET email = ? WHERE sort_order = ? AND email IS NULL');
+  for (const [order, email] of Object.entries(placeholderEmailByOrder)) {
+    backfillEmail.run(email, Number(order));
+  }
 }
 
 function seed() {
