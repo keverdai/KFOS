@@ -98,3 +98,35 @@
     </div>
   </form>
 </div>
+
+<div class="card">
+  <h3>Daily email digest</h3>
+  <p class="small muted">
+    Each founder with an email on file gets a daily email: their own overdue
+    and soon-due commitments, plus a reminder of today's session (pillar,
+    owner, and what to discuss).
+    <% if (!mailerEnabled) { %>
+      Not configured yet — set <code>SMTP_HOST</code>, <code>SMTP_USER</code>,
+      and <code>SMTP_PASS</code> (see README) to turn it on.
+    <% } %>
+  </p>
+
+  <form method="post" action="/settings/digest-hour" class="grid cols-2" style="align-items:end">
+    <div>
+      <label for="digest_hour">Send hour (server time, 0&ndash;23)</label>
+      <input type="number" name="digest_hour" id="digest_hour" value="<%= digestHour %>" min="0" max="23" step="1" />
+    </div>
+    <div>
+      <button class="btn small" type="submit">Save</button>
+    </div>
+  </form>
+  <p class="small muted" style="margin-top:8px">
+    Last sent: <%= digestLastSentDate || 'never' %>
+  </p>
+
+  <form method="post" action="/settings/digest-test-send" style="margin-top:12px">
+    <button class="btn small secondary" type="submit" <%= mailerEnabled ? '' : 'disabled' %>>
+      Send me a preview now
+    </button>
+  </form>
+</div>

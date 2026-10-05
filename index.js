@@ -23,9 +23,11 @@ const path = require('path');
 })();
 
 const app = require('./src/app');
+const scheduler = require('./src/lib/scheduler');
 
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
   console.log(`KFOS running at http://localhost:${PORT}`);
+  scheduler.start();
 });

@@ -3,6 +3,8 @@ const router = express.Router();
 
 const repo = require('../lib/repo');
 const settings = require('../lib/settings');
+const mailer = require('../lib/mailer');
+const digest = require('../lib/digest');
 const { allPillarsIncludingPriority } = require('../lib/pillars');
 const { hashPassword, verifyPassword } = require('../lib/passwords');
 
@@ -20,6 +22,9 @@ router.get('/', (req, res) => {
     weekdayPillarMap: settings.getWeekdayPillarMap(),
     allPillars: allPillarsIncludingPriority(),
     minPasswordLength: MIN_PASSWORD_LENGTH,
+    digestHour: settings.get('digest_hour', '8'),
+    digestLastSentDate: settings.get('digest_last_sent_date'),
+    mailerEnabled: mailer.enabled(),
   });
 });
 
@@ -98,6 +103,29 @@ router.post('/weekday-pillars', (req, res) => {
   }
   settings.setWeekdayPillarMap(map);
   res.redirect('/settings?flash=Weekday pillars saved');
+});
+
+router.post('/digest-hour', (req, res) => {
+  const hour = Number(req.body.digest_hour);
+  if (!Number.isInteger(hour) || hour < 0 || hour > 23) {
+    return res.redirect('/settings?flash=Digest hour must be a whole number from 0 to 23');
+  }
+  settings.set('digest_hour', String(hour));
+  res.redirect('/settings?flash=Digest send time saved');
+});
+
+router.post('/digest-test-send', async (req, res) => {
+  if (!mailer.enabled()) {
+    return res.redirect('/settings?flash=Set SMTP_HOST/SMTP_USER/SMTP_PASS first — see README');
+  }
+  const [result] = await digest.sendDailyDigest({ onlyFounderId: req.founder.id, force: true });
+  if (!result) {
+    return res.redirect('/settings?flash=Add an email to your account first — see Your account above');
+  }
+  if (result.sent) {
+    return res.redirect(`/settings?flash=Test digest sent to ${encodeURIComponent(result.email)}`);
+  }
+  return res.redirect('/settings?flash=Test send failed — check server logs');
 });
 
 module.exports = router;
