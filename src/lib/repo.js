@@ -212,6 +212,13 @@ const commitments = {
 
 // ---- Daily logs ----
 const dailyLogs = {
+  // Positional (?) binding throughout, matching every other write in this
+  // file — named (@field) binding via a plain object is the one thing this
+  // function used to do differently, and it's the one write in the app that
+  // was silently failing against the real remote libsql/Turso connection in
+  // production (Hrana protocol) despite working fine against a local file,
+  // which is all a sandbox can test against. Not worth the risk of relying
+  // on a driver-internal behavior that can't be verified from here again.
   upsert(entry) {
     const existing = db
       .prepare('SELECT id FROM daily_logs WHERE date = ? AND founder_id = ?')
@@ -231,19 +238,20 @@ const dailyLogs = {
       'biggest_problem',
       'decision_tomorrow',
     ];
+    const fieldValues = fields.map((f) => entry[f]);
     if (existing) {
-      const setClause = fields.map((f) => `${f} = @${f}`).join(', ');
-      db.prepare(`UPDATE daily_logs SET ${setClause}, updated_at = datetime('now') WHERE id = @id`).run({
-        ...entry,
-        id: existing.id,
-      });
+      const setClause = fields.map((f) => `${f} = ?`).join(', ');
+      db.prepare(`UPDATE daily_logs SET ${setClause}, updated_at = datetime('now') WHERE id = ?`).run(
+        ...fieldValues,
+        existing.id
+      );
       return existing.id;
     }
     const cols = ['date', 'founder_id', ...fields];
-    const placeholders = cols.map((c) => `@${c}`).join(', ');
+    const placeholders = cols.map(() => '?').join(', ');
     const info = db
       .prepare(`INSERT INTO daily_logs (${cols.join(', ')}) VALUES (${placeholders})`)
-      .run(entry);
+      .run(entry.date, entry.founder_id, ...fieldValues);
     return Number(info.lastInsertRowid);
   },
   getByDateFounder(date, founderId) {
