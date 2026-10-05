@@ -84,8 +84,8 @@ const sessions = {
         `INSERT INTO sessions (date, pillar, owner_founder_id, objective, discussion, decisions, updated_by_founder_id)
          VALUES (?, ?, ?, ?, ?, ?, ?)`
       )
-      .run(date, pillar, owner_founder_id, objective, discussion, decisions, updated_by_founder_id || null);
-    return sessions.getById(info.lastInsertRowid);
+      .run(date, pillar, owner_founder_id, objective, discussion, decisions);
+    return sessions.getById(Number(info.lastInsertRowid));
   },
   close(id) {
     db.prepare("UPDATE sessions SET closed = 1, updated_at = datetime('now') WHERE id = ?").run(id);
@@ -105,16 +105,8 @@ const commitments = {
         `INSERT INTO commitments (session_id, pillar, description, definition_of_done, owner_founder_id, due_date, created_by_founder_id)
          VALUES (?, ?, ?, ?, ?, ?, ?)`
       )
-      .run(
-        session_id || null,
-        pillar,
-        description,
-        definition_of_done || '',
-        owner_founder_id || null,
-        due_date || null,
-        created_by_founder_id || null
-      );
-    return commitments.getById(info.lastInsertRowid);
+      .run(session_id || null, pillar, description, definition_of_done || '', owner_founder_id || null, due_date || null);
+    return commitments.getById(Number(info.lastInsertRowid));
   },
   getById(id) {
     return db.prepare('SELECT * FROM commitments WHERE id = ?').get(id);
@@ -133,10 +125,16 @@ const commitments = {
   bySession(sessionId) {
     return db.prepare('SELECT * FROM commitments WHERE session_id = ? ORDER BY id').all(sessionId);
   },
-  all({ status, owner_founder_id, pillar, dueBefore, dueAfter } = {}) {
-    let sql = 'SELECT * FROM commitments WHERE 1=1';
+  _where({ status, owner_founder_id, pillar, dueBefore, dueAfter, attention, asOfDate } = {}) {
+    let sql = ' FROM commitments WHERE 1=1';
     const params = [];
-    if (status) {
+    if (attention === 'overdue') {
+      sql += " AND status IN ('open', 'yellow') AND due_date IS NOT NULL AND due_date < ?";
+      params.push(asOfDate);
+    } else if (attention === 'due_soon') {
+      sql += " AND status IN ('open', 'yellow') AND due_date IS NOT NULL AND due_date <= ?";
+      params.push(dueBefore);
+    } else if (status) {
       sql += ' AND status = ?';
       params.push(status);
     }
@@ -148,7 +146,7 @@ const commitments = {
       sql += ' AND pillar = ?';
       params.push(pillar);
     }
-    if (dueBefore) {
+    if (!attention && dueBefore) {
       sql += ' AND due_date <= ?';
       params.push(dueBefore);
     }
@@ -156,8 +154,41 @@ const commitments = {
       sql += ' AND due_date >= ?';
       params.push(dueAfter);
     }
-    sql += ' ORDER BY (due_date IS NULL), due_date, id DESC';
-    return db.prepare(sql).all(...params);
+    return { sql, params };
+  },
+  all({ status, owner_founder_id, pillar, dueBefore, dueAfter, attention, asOfDate, limit, offset } = {}) {
+    const { sql: where, params } = commitments._where({
+      status,
+      owner_founder_id,
+      pillar,
+      dueBefore,
+      dueAfter,
+      attention,
+      asOfDate,
+    });
+    let sql = `SELECT *${where} ORDER BY (due_date IS NULL), due_date, id DESC`;
+    const queryParams = [...params];
+    if (limit != null) {
+      sql += ' LIMIT ?';
+      queryParams.push(limit);
+      if (offset) {
+        sql += ' OFFSET ?';
+        queryParams.push(offset);
+      }
+    }
+    return db.prepare(sql).all(...queryParams);
+  },
+  count({ status, owner_founder_id, pillar, dueBefore, dueAfter, attention, asOfDate } = {}) {
+    const { sql: where, params } = commitments._where({
+      status,
+      owner_founder_id,
+      pillar,
+      dueBefore,
+      dueAfter,
+      attention,
+      asOfDate,
+    });
+    return Number(db.prepare(`SELECT COUNT(*) AS n${where}`).get(...params).n);
   },
   inRange(startDate, endDate) {
     return db
@@ -205,7 +236,7 @@ const dailyLogs = {
     const info = db
       .prepare(`INSERT INTO daily_logs (${cols.join(', ')}) VALUES (${placeholders})`)
       .run(entry);
-    return info.lastInsertRowid;
+    return Number(info.lastInsertRowid);
   },
   getByDateFounder(date, founderId) {
     return db.prepare('SELECT * FROM daily_logs WHERE date = ? AND founder_id = ?').get(date, founderId);

@@ -1,16 +1,7 @@
 const path = require('path');
 const fs = require('fs');
-const Database = require('better-sqlite3');
 
-const DATA_DIR = path.join(__dirname, '..', '..', 'data');
-if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-
-const DB_PATH = process.env.KFOS_DB_PATH || path.join(DATA_DIR, 'kfos.db');
-const db = new Database(DB_PATH);
-db.pragma('journal_mode = WAL');
-db.pragma('foreign_keys = ON');
-
-db.exec(`
+const SCHEMA = `
 CREATE TABLE IF NOT EXISTS founders (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
@@ -93,8 +84,49 @@ CREATE TABLE IF NOT EXISTS daily_logs (
 CREATE INDEX IF NOT EXISTS idx_commitments_due ON commitments(due_date);
 CREATE INDEX IF NOT EXISTS idx_commitments_owner ON commitments(owner_founder_id);
 CREATE INDEX IF NOT EXISTS idx_daily_logs_date ON daily_logs(date);
-CREATE INDEX IF NOT EXISTS idx_auth_sessions_expires ON auth_sessions(expires_at);
-`);
+`;
+
+function wrapLastInsertRowid(db) {
+  const origPrepare = db.prepare.bind(db);
+  db.prepare = (sql) => {
+    const stmt = origPrepare(sql);
+    const origRun = stmt.run.bind(stmt);
+    stmt.run = (...args) => {
+      const info = origRun(...args);
+      if (info && typeof info.lastInsertRowid === 'bigint') {
+        info.lastInsertRowid = Number(info.lastInsertRowid);
+      }
+      return info;
+    };
+    return stmt;
+  };
+  return db;
+}
+
+function openDatabase() {
+  const tursoUrl = process.env.TURSO_DATABASE_URL || process.env.LIBSQL_URL;
+  const authToken = process.env.TURSO_AUTH_TOKEN || process.env.LIBSQL_AUTH_TOKEN;
+
+  if (tursoUrl) {
+    const Libsql = require('libsql');
+    const Database = Libsql.default || Libsql;
+    const db = wrapLastInsertRowid(new Database(tursoUrl, { authToken }));
+    console.log('KFOS database: Turso (hosted SQLite)');
+    return { db, remote: true };
+  }
+
+  const Database = require('better-sqlite3');
+  const DATA_DIR = path.join(__dirname, '..', '..', 'data');
+  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+  const DB_PATH = process.env.KFOS_DB_PATH || path.join(DATA_DIR, 'kfos.db');
+  const db = wrapLastInsertRowid(new Database(DB_PATH));
+  db.pragma('journal_mode = WAL');
+  db.pragma('foreign_keys = ON');
+  return { db, remote: false };
+}
+
+const { db } = openDatabase();
+db.exec(SCHEMA);
 
 // CREATE TABLE IF NOT EXISTS never alters a table that already existed from
 // an earlier version of KFOS (e.g. before founder accounts existed) — add
@@ -122,7 +154,7 @@ function migrate() {
 }
 
 function seed() {
-  const founderCount = db.prepare('SELECT COUNT(*) AS c FROM founders').get().c;
+  const founderCount = Number(db.prepare('SELECT COUNT(*) AS c FROM founders').get().c);
   if (founderCount === 0) {
     // Seeded with placeholder emails and no password: whoever signs in with
     // one of these addresses for the first time chooses their own password

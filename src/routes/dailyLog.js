@@ -26,13 +26,32 @@ router.get('/', (req, res) => {
   });
 });
 
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
 router.post('/', (req, res) => {
-  const b = req.body;
+  const b = req.body || {}; // a body-less request (e.g. a bot) still needs to hit the validation below, not crash
+
+  // The SQLite driver in front of this (libsql/Turso in production) binds a
+  // missing/undefined/NaN parameter as SQL NULL instead of throwing — so an
+  // incomplete submission (a bot hitting this endpoint directly, a stale
+  // request, a bad client) used to reach the DB and crash with an unhandled
+  // "NOT NULL constraint failed" 500 instead of a clean validation error.
+  // Reject it here instead.
+  const date = typeof b.date === 'string' ? b.date.trim() : '';
+  const founderId = Number(b.founder_id);
+
+  if (!DATE_RE.test(date)) {
+    return res.redirect('/daily-log?flash=' + encodeURIComponent('Could not save: missing or invalid date'));
+  }
+  if (!Number.isInteger(founderId) || !repo.founders.get(founderId)) {
+    return res.redirect(
+      `/daily-log?date=${date}&flash=` + encodeURIComponent('Could not save: missing or unknown founder')
+    );
+  }
+
   const entry = {
-    date: b.date,
-    // Never trust a client-supplied founder id here — that would defeat the
-    // whole point of per-founder login. It's always the signed-in founder.
-    founder_id: req.founder.id,
+    date,
+    founder_id: founderId,
     revenue_hours: Number(b.revenue_hours) || 0,
     revenue_evidence: b.revenue_evidence || '',
     product_hours: Number(b.product_hours) || 0,

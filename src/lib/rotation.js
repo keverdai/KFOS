@@ -8,9 +8,23 @@
 
 const settings = require('./settings');
 
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+// Every date-aware route hands this whatever's in a query/URL param (or, for
+// history links, whatever's stored in the DB) with no validation upstream —
+// so a stale bookmark, a hand-edited URL, or an old row written before
+// input validation existed could all pass garbage in here. A malformed
+// string used to make every function below it throw a RangeError (via
+// toDateStr()'s toISOString() on an Invalid Date), crashing the whole
+// request. Fall back to today instead of crashing.
 function parseDate(dateStr) {
-  const [y, m, d] = dateStr.split('-').map(Number);
-  return new Date(Date.UTC(y, m - 1, d));
+  if (typeof dateStr === 'string' && DATE_RE.test(dateStr)) {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const parsed = new Date(Date.UTC(y, m - 1, d));
+    if (!Number.isNaN(parsed.getTime())) return parsed;
+  }
+  const now = new Date();
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
 }
 
 function toDateStr(date) {

@@ -17,6 +17,8 @@ const scorecardRoutes = require('./routes/scorecard');
 const settingsRoutes = require('./routes/settings');
 
 const app = express();
+app.set('trust proxy', 1);
+
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
@@ -27,6 +29,7 @@ app.set('layout', 'layout');
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use('/css', express.static(path.join(__dirname, '..', 'public', 'css')));
+app.use(basicAuth);
 
 app.use(auth.loadFounder);
 
@@ -63,6 +66,35 @@ app.use((req, res, next) => {
       timeZone: 'UTC',
     });
   };
+  res.locals.escapeHtml = (str) => String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+  res.locals.linkifyEvidenceHtml = (text) => {
+    if (!text) return '';
+    const escapeHtml = res.locals.escapeHtml;
+    const chunks = String(text).split(/\s*,\s*|\n+/).filter((s) => s.trim());
+    const items = chunks.map((chunk) => {
+      const trimmed = chunk.trim();
+      if (/^https?:\/\/.+/i.test(trimmed)) {
+        let label;
+        try {
+          const u = new URL(trimmed);
+          const path = u.pathname === '/' ? '' : u.pathname;
+          label = u.hostname.replace(/^www\./, '') + path;
+          if (label.length > 48) label = `${label.slice(0, 48)}…`;
+        } catch {
+          label = trimmed.length > 48 ? `${trimmed.slice(0, 48)}…` : trimmed;
+        }
+        const safeUrl = escapeHtml(trimmed);
+        return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" title="${safeUrl}">${escapeHtml(label)}</a>`;
+      }
+      return `<span>${escapeHtml(trimmed)}</span>`;
+    });
+    if (items.length === 1) return items[0];
+    return `<span class="evidence-links">${items.join('')}</span>`;
+  };
   next();
 });
 
@@ -81,6 +113,16 @@ app.use('/settings', settingsRoutes);
 
 app.use((req, res) => {
   res.status(404).render('404', { title: 'Not found', active: '' });
+});
+
+// Safety net: an unhandled error in any route (sync throw or rejected
+// promise — Express 5 forwards both here automatically) gets logged and
+// turned into a clean response instead of leaking a raw stack/crash to
+// whoever's browser triggered it.
+app.use((err, req, res, next) => {
+  console.error(`[error] ${req.method} ${req.originalUrl}:`, err);
+  if (res.headersSent) return next(err);
+  res.status(500).send('Something went wrong on our end. Please try again.');
 });
 
 module.exports = app;
