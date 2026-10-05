@@ -31,52 +31,54 @@ function getTransporter() {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
       },
-      // A handful of founders, not a mailing list — one pooled connection
-      // reused across sends avoids a fresh TLS handshake per email.
-      pool: true,
-      maxConnections: 1,
-      // nodemailer's defaults here are minutes long (2min connect, 10min
-      // socket) — fine for a batch job, but deadly for a button someone is
-      // staring at waiting for a page to respond. Fail fast instead; the
-      // one retry above still gets a second shot at a slow handshake.
-      connectionTimeout: 8000,
-      greetingTimeout: 8000,
-      socketTimeout: 15000,
+      // Sends go through queueMail() now (see below) and never block a
+      // request, so there's no reason to race the timeout tight the way an
+      // earlier version of this file did — that just turned "a bit slow"
+      // into "times out every time" on a Render-to-Brevo path that's
+      // apparently taking longer than 8s to connect. Give it real room;
+      // the retries below still bound the total wait.
+      connectionTimeout: 20000,
+      greetingTimeout: 15000,
+      socketTimeout: 30000,
     });
   }
   return transporter;
 }
 
-// Errors worth one retry: transient connection issues (a slow DNS/TCP
-// handshake right as the Render instance wakes from sleep, a dropped
-// socket). A bad password (EAUTH) or a rejected recipient won't fix itself
-// on retry, so those fail immediately instead of doubling the wait.
+// Errors worth retrying: transient connection issues (a slow DNS/TCP
+// handshake, a dropped socket, a relay that's momentarily unreachable). A
+// bad password (EAUTH) or a rejected recipient won't fix itself on retry,
+// so those fail immediately instead of wasting the wait.
 const RETRYABLE_CODES = new Set(['ETIMEDOUT', 'ESOCKET', 'ECONNECTION', 'ECONNRESET']);
+const MAX_ATTEMPTS = 3;
+const RETRY_DELAYS_MS = [3000, 8000]; // between attempts 1→2 and 2→3
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 // { to, subject, html, text } -> { sent: boolean, skipped?: true, error? }
+// Runs via queueMail() for anything triggered from a route, so taking a
+// while here costs nobody a hung page — only the eventual log line.
 async function sendMail({ to, subject, html, text }) {
   const t = getTransporter();
   if (!t) {
     console.log(`[mailer] SMTP not configured, skipping email to ${to}: ${subject}`);
     return { sent: false, skipped: true };
   }
-  for (let attempt = 1; attempt <= 2; attempt++) {
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {
       await t.sendMail({ from: fromAddress(), to, subject, html, text });
       console.log(`[mailer] sent "${subject}" to ${to}`);
       return { sent: true };
     } catch (err) {
-      const willRetry = attempt === 1 && RETRYABLE_CODES.has(err.code);
+      const willRetry = attempt < MAX_ATTEMPTS && RETRYABLE_CODES.has(err.code);
       console.error(
-        `[mailer] failed to send "${subject}" to ${to} (attempt ${attempt})${willRetry ? ', retrying' : ''}:`,
+        `[mailer] failed to send "${subject}" to ${to} (attempt ${attempt}/${MAX_ATTEMPTS})${willRetry ? ', retrying' : ''}:`,
         err
       );
       if (!willRetry) return { sent: false, error: err };
-      await sleep(3000);
+      await sleep(RETRY_DELAYS_MS[attempt - 1]);
     }
   }
 }
