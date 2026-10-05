@@ -17,19 +17,16 @@ const scorecardRoutes = require('./routes/scorecard');
 const settingsRoutes = require('./routes/settings');
 
 const app = express();
-app.set('trust proxy', 1);
-
+app.set('trust proxy', 1); // so req.protocol reflects X-Forwarded-Proto behind a reverse proxy
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
-app.set('trust proxy', 1); // so req.protocol reflects X-Forwarded-Proto behind a reverse proxy
 app.use(expressLayouts);
 app.set('layout', 'layout');
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use('/css', express.static(path.join(__dirname, '..', 'public', 'css')));
-app.use(basicAuth);
 
 app.use(auth.loadFounder);
 

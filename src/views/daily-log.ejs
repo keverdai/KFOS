@@ -10,13 +10,11 @@
 <div class="daily-log-page">
   <div class="card daily-log-card">
     <div class="log-toolbar">
-      <h2 class="log-title">Daily Log</h2>
+      <div>
+        <h2 class="log-title">Daily Log</h2>
+        <p class="small muted" style="margin:2px 0 0">Logging as <strong><%= currentFounder.name %></strong> (<%= currentFounder.role %>)</p>
+      </div>
       <form method="get" action="/daily-log" class="log-filters">
-        <select name="founder" id="founder" aria-label="Founder" onchange="this.form.submit()">
-          <% founders.forEach(f => { %>
-            <option value="<%= f.id %>" <%= f.id === selectedFounderId ? 'selected' : '' %>><%= f.name %> (<%= f.role %>)</option>
-          <% }) %>
-        </select>
         <input type="date" name="date" id="date" aria-label="Date" value="<%= date %>" onchange="this.form.submit()" />
       </form>
       <div class="log-progress" title="<%= totalHrs.toFixed(1) %> / <%= hourTarget %> hours">
@@ -28,7 +26,7 @@
 
     <form id="daily-log-form" method="post" action="/daily-log" class="log-form">
       <input type="hidden" name="date" value="<%= date %>" />
-      <input type="hidden" name="founder_id" value="<%= selectedFounderId %>" />
+      <!-- no founder_id field: the server always uses the signed-in founder, never a client-submitted value -->
 
       <div class="pillar-log-grid">
         <div class="pillar-log-head">
@@ -75,7 +73,7 @@
           <% history.slice().reverse().forEach(l => {
             const total = l.revenue_hours + l.product_hours + l.distribution_hours + l.infrastructure_hours + l.learning_hours;
           %>
-            <a class="log-history-row" href="/daily-log?date=<%= l.date %>&founder=<%= l.founder_id %>">
+            <a class="log-history-row" href="/daily-log?date=<%= l.date %>">
               <span class="log-history-date"><%= formatDateNice(l.date) %></span>
               <span class="log-history-founder"><%= l.founder_role %></span>
               <span class="log-history-hrs"><%= total.toFixed(1) %>/<%= hourTarget %></span>

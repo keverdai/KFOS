@@ -1,188 +1,128 @@
+// Per-founder session auth. Each founder authenticates with their own
+// email + password; everything downstream reads identity from req.founder,
+// never from a client-supplied id — that's the whole point of moving off a
+// single shared password plus a founder picker.
+
 const crypto = require('crypto');
-const settings = require('./settings');
-const keverd = require('./keverd');
+const repo = require('./repo');
 
-const COOKIE = 'kfos_session';
-const MAX_AGE_MS = 24 * 60 * 60 * 1000;
+const COOKIE_NAME = 'kfos_session';
+const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
-function authEnabled() {
-  return Boolean(process.env.KFOS_AUTH_PASSWORD);
+function isHttps(req) {
+  return req.protocol === 'https' || req.headers['x-forwarded-proto'] === 'https';
 }
 
-function expectedUsername() {
-  return process.env.KFOS_AUTH_USERNAME || 'keverd';
-}
-
-function secret() {
-  return process.env.KFOS_AUTH_SECRET || process.env.KFOS_AUTH_PASSWORD || 'kfos';
-}
-
-function safeEqual(a, b) {
-  const left = Buffer.from(String(a));
-  const right = Buffer.from(String(b));
-  if (left.length !== right.length) {
-    crypto.timingSafeEqual(left, left);
-    return false;
-  }
-  return crypto.timingSafeEqual(left, right);
-}
-
-function b64url(buf) {
-  return Buffer.from(buf).toString('base64url');
-}
-
-function sign(payload) {
-  return crypto.createHmac('sha256', secret()).update(payload).digest('base64url');
-}
-
-function makeCookieValue(username) {
-  const payload = b64url(JSON.stringify({ u: username, exp: Date.now() + MAX_AGE_MS }));
-  return `${payload}.${sign(payload)}`;
-}
-
-function readCookie(header, name) {
-  if (!header) return '';
-  const parts = header.split(';');
-  for (const part of parts) {
+function parseCookies(header) {
+  const out = {};
+  if (!header) return out;
+  header.split(';').forEach((part) => {
     const idx = part.indexOf('=');
-    if (idx === -1) continue;
+    if (idx === -1) return;
     const key = part.slice(0, idx).trim();
-    if (key === name) return decodeURIComponent(part.slice(idx + 1).trim());
-  }
-  return '';
+    const val = part.slice(idx + 1).trim();
+    if (key) out[key] = decodeURIComponent(val);
+  });
+  return out;
 }
 
-function sessionUser(req) {
-  const raw = readCookie(req.headers.cookie, COOKIE);
-  const dot = raw.lastIndexOf('.');
-  if (dot < 1) return null;
-  const payload = raw.slice(0, dot);
-  const mac = raw.slice(dot + 1);
-  if (!safeEqual(mac, sign(payload))) return null;
-  try {
-    const data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
-    if (!data || data.exp < Date.now()) return null;
-    if (!safeEqual(data.u, expectedUsername())) return null;
-    return data.u;
-  } catch {
-    return null;
-  }
-}
-
-function cookieFlags(req) {
-  const secure = req.secure || req.headers['x-forwarded-proto'] === 'https';
-  return [
+function setSessionCookie(req, res, token) {
+  const attrs = [
+    `${COOKIE_NAME}=${encodeURIComponent(token)}`,
     'Path=/',
     'HttpOnly',
     'SameSite=Lax',
-    `Max-Age=${Math.floor(MAX_AGE_MS / 1000)}`,
-    secure ? 'Secure' : '',
-  ].filter(Boolean).join('; ');
+    `Max-Age=${Math.floor(SESSION_TTL_MS / 1000)}`,
+  ];
+  if (isHttps(req)) attrs.push('Secure');
+  res.append('Set-Cookie', attrs.join('; '));
 }
 
-function setSession(res, req, username) {
-  res.setHeader('Set-Cookie', `${COOKIE}=${encodeURIComponent(makeCookieValue(username))}; ${cookieFlags(req)}`);
+function clearSessionCookie(req, res) {
+  const attrs = [`${COOKIE_NAME}=`, 'Path=/', 'HttpOnly', 'SameSite=Lax', 'Max-Age=0'];
+  if (isHttps(req)) attrs.push('Secure');
+  res.append('Set-Cookie', attrs.join('; '));
 }
 
-function clearSession(res) {
-  res.setHeader('Set-Cookie', `${COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`);
+function createSession(founderId) {
+  const token = crypto.randomBytes(32).toString('hex');
+  const expiresAt = new Date(Date.now() + SESSION_TTL_MS).toISOString();
+  repo.authSessions.create(token, founderId, expiresAt);
+  return token;
 }
 
-function safeNext(value) {
-  if (!value || typeof value !== 'string') return '/today';
-  if (!value.startsWith('/') || value.startsWith('//') || value.includes('\\')) return '/today';
-  if (value.startsWith('/login') || value.startsWith('/logout')) return '/today';
-  return value;
-}
-
-function renderLogin(req, res, extra = {}) {
-  res.status(extra.status || 200).render('login', {
-    layout: false,
-    title: 'Sign in',
-    companyName: settings.get('company_name', 'Keverd'),
-    error: extra.error || null,
-    next: extra.next || req.query.next || '/today',
-    keverdEnabled: keverd.enabled(),
-    keverdPublicKey: keverd.publicKey(),
-  });
+// Attaches req.founder / res.locals.currentFounder when the session cookie
+// is present and valid. Never blocks the request — pair with requireAuth.
+function loadFounder(req, res, next) {
+  const cookies = parseCookies(req.headers.cookie);
+  const token = cookies[COOKIE_NAME];
+  if (token) {
+    const row = repo.authSessions.getWithFounder(token);
+    if (row && row.active && new Date(row.expires_at) > new Date()) {
+      req.founder = {
+        id: row.founder_id,
+        name: row.name,
+        role: row.role,
+        email: row.email,
+      };
+      res.locals.currentFounder = req.founder;
+    } else if (row) {
+      // Expired or deactivated — clean up so it isn't checked again.
+      repo.authSessions.delete(token);
+    }
+  }
+  next();
 }
 
 function requireAuth(req, res, next) {
-  res.locals.authEnabled = authEnabled();
-  res.locals.authUser = null;
+  if (req.founder) return next();
+  const next_ = encodeURIComponent(req.originalUrl || '/');
+  res.redirect(`/login?next=${next_}`);
+}
 
-  if (!authEnabled()) return next();
+// Very small brute-force speed bump. In-memory only (resets on restart) —
+// this is a 3-person internal tool, not a bank, so we don't need more than
+// "stop trivial automated guessing."
+const failedAttempts = new Map(); // email -> { count, blockedUntil }
 
-  if (req.path === '/login' && req.method === 'GET') {
-    if (sessionUser(req)) return res.redirect(safeNext(req.query.next));
-    return renderLogin(req, res);
-  }
+function isLoginBlocked(email) {
+  const entry = failedAttempts.get(email.toLowerCase());
+  if (!entry) return false;
+  return entry.blockedUntil > Date.now();
+}
 
-  if (req.path === '/login' && req.method === 'POST') {
-    return handleLoginPost(req, res).catch((err) => {
-      console.error('[keverd] login verify failed', err);
-      return renderLogin(req, res, {
-        status: 500,
-        error: 'Couldn’t verify this device. Try again.',
-        next: req.body.next,
-      });
-    });
-  }
-
-  if (req.path === '/logout' && (req.method === 'POST' || req.method === 'GET')) {
-    clearSession(res);
-    return res.redirect('/login');
+function recordLoginFailure(email) {
+  const key = email.toLowerCase();
+  const entry = failedAttempts.get(key) || { count: 0, blockedUntil: 0 };
+  entry.count += 1;
+  if (entry.count >= 5) {
+    entry.blockedUntil = Date.now() + Math.min(30000 * (entry.count - 4), 5 * 60 * 1000);
   }
   failedAttempts.set(key, entry);
 }
 
-  const user = sessionUser(req);
-  if (user) {
-    res.locals.authUser = user;
-    return next();
-  }
-
-  const nextPath = req.originalUrl || '/today';
-  return res.redirect(`/login?next=${encodeURIComponent(nextPath)}`);
+function clearLoginFailures(email) {
+  failedAttempts.delete(email.toLowerCase());
 }
 
-async function handleLoginPost(req, res) {
-  const user = String(req.body.username || '');
-  const pass = String(req.body.password || '');
-  const eventId = String(req.body.eventId || '').trim();
-  const visitorIdFromClient = String(req.body.visitorId || '').trim();
-
-  if (keverd.enabled()) {
-    const { risk, missingEventId } = await keverd.verifyLoginEvent(eventId);
-    if (missingEventId) {
-      console.warn('[keverd] login without eventId', { visitorIdFromClient });
-    }
-    if (risk && risk.action === 'block') {
-      return renderLogin(req, res, {
-        status: 403,
-        error: 'This sign-in was blocked by device risk checks.',
-        next: req.body.next,
-      });
-    }
-    if (risk) {
-      const deviceId = risk.visitor_id || risk.fingerprint || visitorIdFromClient;
-      console.log(
-        `[keverd] device=${deviceId || 'unknown'} action=${risk.action} score=${risk.risk_score} times_seen=${risk.times_seen}`
-      );
-    }
+// Periodic cleanup of expired session rows — no need to do this per-request.
+setInterval(() => {
+  try {
+    repo.authSessions.deleteExpired();
+  } catch {
+    // best-effort
   }
+}, 60 * 60 * 1000).unref();
 
-  const okUser = safeEqual(user, expectedUsername());
-  const okPass = safeEqual(pass, process.env.KFOS_AUTH_PASSWORD);
-  if (!okUser || !okPass) {
-    return renderLogin(req, res, {
-      status: 401,
-      error: 'That username or password isn’t right.',
-      next: req.body.next,
-    });
-  }
-  setSession(res, req, expectedUsername());
-  return res.redirect(safeNext(req.body.next));
-}
-
-module.exports = requireAuth;
+module.exports = {
+  COOKIE_NAME,
+  parseCookies,
+  setSessionCookie,
+  clearSessionCookie,
+  createSession,
+  loadFounder,
+  requireAuth,
+  isLoginBlocked,
+  recordLoginFailure,
+  clearLoginFailures,
+};
