@@ -119,7 +119,7 @@ router.post('/new', (req, res) => {
 
 router.post('/:id/status', (req, res) => {
   const { status, evidence, status_note } = req.body;
-  repo.commitments.updateStatus(req.params.id, status, evidence, status_note);
+  repo.commitments.updateStatus(req.params.id, status, evidence, status_note, req.founder.id);
   redirectBack(req, res, { flash: 'Status updated', hash: '#c' + req.params.id });
 });
 

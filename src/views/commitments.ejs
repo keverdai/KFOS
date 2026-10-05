@@ -53,6 +53,8 @@
         <tbody>
           <% commitments.forEach(c => {
             const f = founders.find(f=>f.id===c.owner_founder_id);
+            const createdBy = allFoundersEverActive.find(f=>f.id===c.created_by_founder_id);
+            const updatedBy = allFoundersEverActive.find(f=>f.id===c.status_updated_by_founder_id);
             const overdue = c.due_date && c.due_date < todayStr && !['green','cancelled'].includes(c.status);
           %>
             <tr id="c<%= c.id %>">
@@ -60,12 +62,16 @@
               <td class="col-commitment" data-label="Commitment">
                 <strong><%= c.description %></strong>
                 <% if (c.definition_of_done) { %><div class="small muted cell-dod">DoD: <%= c.definition_of_done %></div><% } %>
+                <% if (createdBy) { %><div class="small muted">logged by <%= createdBy.name %></div><% } %>
               </td>
               <td class="col-owner" data-label="Owner"><%= f ? f.role : '—' %></td>
               <td class="col-due <%= overdue ? 'overdue' : 'muted' %>" data-label="Due">
                 <%= c.due_date ? formatDateNice(c.due_date) : '—' %><%= overdue ? ' (overdue)' : '' %>
               </td>
-              <td class="col-status" data-label="Status"><%- statusBadgeHtml(c.status) %></td>
+              <td class="col-status" data-label="Status">
+                <%- statusBadgeHtml(c.status) %>
+                <% if (updatedBy) { %><div class="small muted">by <%= updatedBy.name %></div><% } %>
+              </td>
               <td class="col-evidence cell-evidence" data-label="Evidence">
                 <% if (c.evidence) { %><%- linkifyEvidenceHtml(c.evidence) %><% } else { %><span class="muted">—</span><% } %>
               </td>

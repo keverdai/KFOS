@@ -38,20 +38,19 @@ router.post('/', (req, res) => {
   // "NOT NULL constraint failed" 500 instead of a clean validation error.
   // Reject it here instead.
   const date = typeof b.date === 'string' ? b.date.trim() : '';
-  const founderId = Number(b.founder_id);
 
   if (!DATE_RE.test(date)) {
     return res.redirect('/daily-log?flash=' + encodeURIComponent('Could not save: missing or invalid date'));
   }
-  if (!Number.isInteger(founderId) || !repo.founders.get(founderId)) {
-    return res.redirect(
-      `/daily-log?date=${date}&flash=` + encodeURIComponent('Could not save: missing or unknown founder')
-    );
-  }
 
   const entry = {
     date,
-    founder_id: founderId,
+    // Never trust a client-supplied founder id here — req.founder is set by
+    // requireAuth from the session cookie, so it's always the signed-in
+    // founder and already guaranteed to be a real, active account. This is
+    // the entire point of per-founder login: hours are tied to who actually
+    // authenticated, not to a form field.
+    founder_id: req.founder.id,
     revenue_hours: Number(b.revenue_hours) || 0,
     revenue_evidence: b.revenue_evidence || '',
     product_hours: Number(b.product_hours) || 0,

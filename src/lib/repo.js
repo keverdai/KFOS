@@ -84,7 +84,7 @@ const sessions = {
         `INSERT INTO sessions (date, pillar, owner_founder_id, objective, discussion, decisions, updated_by_founder_id)
          VALUES (?, ?, ?, ?, ?, ?, ?)`
       )
-      .run(date, pillar, owner_founder_id, objective, discussion, decisions);
+      .run(date, pillar, owner_founder_id, objective, discussion, decisions, updated_by_founder_id || null);
     return sessions.getById(Number(info.lastInsertRowid));
   },
   close(id) {
@@ -105,7 +105,15 @@ const commitments = {
         `INSERT INTO commitments (session_id, pillar, description, definition_of_done, owner_founder_id, due_date, created_by_founder_id)
          VALUES (?, ?, ?, ?, ?, ?, ?)`
       )
-      .run(session_id || null, pillar, description, definition_of_done || '', owner_founder_id || null, due_date || null);
+      .run(
+        session_id || null,
+        pillar,
+        description,
+        definition_of_done || '',
+        owner_founder_id || null,
+        due_date || null,
+        created_by_founder_id || null
+      );
     return commitments.getById(Number(info.lastInsertRowid));
   },
   getById(id) {
