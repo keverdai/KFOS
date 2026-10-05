@@ -91,43 +91,55 @@ placeholder emails — nothing else to configure).
 
 - `PORT` — port to listen on (default `3000`)
 - `KFOS_DB_PATH` — path to the SQLite file (default `data/kfos.db`)
-- `KFOS_AUTH_PASSWORD` — sets a shared password and turns on login (see below)
-- `KFOS_AUTH_USERNAME` — username to pair with it (default `keverd`)
 - `TURSO_DATABASE_URL` — hosted SQLite URL (use this on Render’s free plan; see below)
 - `TURSO_AUTH_TOKEN` — Turso auth token paired with that URL
-- `KEVERD_PUBLIC_KEY` — browser collect key (`kv_pk_test_…` / `kv_pk_live_…`) for login device ID
+- `KEVERD_PUBLIC_KEY` — browser collect key (`kv_pk_test_…` / `kv_pk_live_…`) for device checks on login
 - `KEVERD_SECRET_KEY` — server verify key (`kv_sk_…`); never expose this in the browser
 
-## Password protection
+## Founder accounts (how login works)
 
-The app has **no login by default** — fine for `localhost`, not fine once
-it's reachable by URL, since anyone with the link could read or edit every
-commitment and daily log. Setting `KFOS_AUTH_PASSWORD` turns on a dedicated
-`/login` page (shared username/password for the whole team):
+Every founder signs in with their **own** email and password — there is no
+shared password and no "pick your name from a dropdown." This is what ties
+every logged hour and every commitment write to the actual person who did
+it, not to whoever happened to be selected in a menu:
 
-```bash
-KFOS_AUTH_USERNAME=keverd KFOS_AUTH_PASSWORD='choose-a-real-password' npm start
-```
+1. **First sign-in claims the account.** The three founders are seeded with
+   placeholder emails — `ceo@keverd.com`, `cto@keverd.com`, `coo@keverd.com`.
+   Go to `/login`, enter the email your team gave you; since it has no
+   password yet, you'll be asked to choose one right there. That password
+   is yours from then on.
+2. **After that, it's a normal sign-in** — email, then password.
+3. Once signed in, go to **Settings → Your account** to change your email
+   to your real one and set/change your password any time (change requires
+   your current password).
+4. **Locked out?** Any other signed-in founder can reset your password from
+   **Settings → Founders** — that clears it, so your *next* sign-in works
+   like a first-time claim again.
 
-A signed cookie keeps you signed in for 24 hours. Use **Sign out** in the
-nav when you're done. Don't commit a real password into the repo.
+Sessions are signed cookies (30-day expiry) backed by a server-side table in
+the same database. Passwords are hashed with `scrypt` (Node's built-in
+`crypto`, no extra dependency). A handful of failed logins on one email
+triggers a short cooldown.
 
-### Optional: Keverd on login
+### Optional: Keverd device check on login
 
 With both `KEVERD_PUBLIC_KEY` and `KEVERD_SECRET_KEY` set, the login page
-collects a device fingerprint via the [Keverd JS SDK](https://developer.keverd.com/quickstart)
-and the server verifies the `event_id` with
-[`@keverdjs/node`](https://developer.keverd.com/node-js). Event details
-(device id, risk score, action, location signals) are logged on every
-sign-in. A `block` action rejects the login; other actions still allow
-password auth. Get keys at [dashboard.keverd.com](https://dashboard.keverd.com).
+additionally collects a device fingerprint via the
+[Keverd JS SDK](https://developer.keverd.com/quickstart) and the server
+verifies the `event_id` with [`@keverdjs/node`](https://developer.keverd.com/node-js)
+on every claim/sign-in attempt — layered on top of the per-founder login
+above, never a replacement for it. Event details (device id, risk score,
+action, location/smart signals) are logged server-side on every attempt, so
+this doubles as a way to watch real login traffic. An explicit `block`
+verdict from Keverd rejects the sign-in; a Keverd API error never does —
+login fails open rather than risking an outage there locking out the whole
+team. Get keys at [dashboard.keverd.com](https://dashboard.keverd.com).
 
 ## Deploying for daily use
 
 This is a small stateful Node/Express app. Locally it writes to `data/kfos.db`.
 On a host with a persistent disk (a VPS, Fly.io, Railway, Render **paid** with
-a volume), point `KFOS_DB_PATH` at that volume and set
-`KFOS_AUTH_PASSWORD`/`KFOS_AUTH_USERNAME`.
+a volume), point `KFOS_DB_PATH` at that volume.
 
 ### Render free plan (why data disappears)
 
@@ -143,7 +155,6 @@ deleted. A paid Render disk would fix this; on the free plan, store SQLite
 3. In the Render dashboard → Environment, add:
    - `TURSO_DATABASE_URL` = `libsql://….turso.io`
    - `TURSO_AUTH_TOKEN` = the token
-   - `KFOS_AUTH_PASSWORD` / `KFOS_AUTH_USERNAME` (required once it’s public)
 4. Redeploy. Logs should say `KFOS database: Turso (hosted SQLite)`.
 
 Local `npm start` without those variables still uses the file on disk. Do not
@@ -162,6 +173,7 @@ src/lib/db.js             SQLite schema, migrations + seed
 src/lib/settings.js       key/value settings helper
 src/lib/passwords.js      scrypt password hashing
 src/lib/auth.js           session cookies, loadFounder/requireAuth, login throttling
+src/lib/keverd.js         optional device-risk check, layered onto login (see above)
 src/lib/repo.js           data access (founders, auth_sessions, sessions, commitments, daily_logs)
 src/routes/auth.js        /login, /logout
 src/routes/guide.js       landing page ('/')

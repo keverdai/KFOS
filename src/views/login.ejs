@@ -21,29 +21,88 @@
 
   <% if (mode === 'claim') { %>
     <p class="small muted">First time signing in as <strong><%= email %></strong> — choose a password. This becomes your login from now on, tied to everything you log or commit to.</p>
-    <form method="post" action="/login">
+    <form method="post" action="/login" id="login-form">
       <input type="hidden" name="mode" value="claim" />
       <input type="hidden" name="email" value="<%= email %>" />
       <% if (next) { %><input type="hidden" name="next" value="<%= next %>" /><% } %>
+      <input type="hidden" name="eventId" id="eventId" value="" />
+      <input type="hidden" name="visitorId" id="visitorId" value="" />
       <label for="password">Choose a password (min <%= minPasswordLength %> characters)</label>
       <input type="password" name="password" id="password" required minlength="<%= minPasswordLength %>" autofocus />
       <label for="confirm">Confirm password</label>
       <input type="password" name="confirm" id="confirm" required minlength="<%= minPasswordLength %>" />
-      <button class="btn" type="submit">Set password &amp; sign in</button>
+      <button class="btn" type="submit" id="login-submit">Set password &amp; sign in</button>
     </form>
+    <% if (keverdEnabled) { %><p class="muted small" id="keverd-status">Checking device…</p><% } %>
     <p class="small"><a href="/login">Not you? Use a different email</a></p>
   <% } %>
 
   <% if (mode === 'signin') { %>
     <p class="small muted">Welcome back, <strong><%= founder.name %></strong> (<%= founder.role %>).</p>
-    <form method="post" action="/login">
+    <form method="post" action="/login" id="login-form">
       <input type="hidden" name="mode" value="signin" />
       <input type="hidden" name="email" value="<%= email %>" />
       <% if (next) { %><input type="hidden" name="next" value="<%= next %>" /><% } %>
+      <input type="hidden" name="eventId" id="eventId" value="" />
+      <input type="hidden" name="visitorId" id="visitorId" value="" />
       <label for="password">Password</label>
       <input type="password" name="password" id="password" required autofocus />
-      <button class="btn" type="submit">Sign in</button>
+      <button class="btn" type="submit" id="login-submit">Sign in</button>
     </form>
+    <% if (keverdEnabled) { %><p class="muted small" id="keverd-status">Checking device…</p><% } %>
     <p class="small"><a href="/login">Not you? Use a different email</a></p>
   <% } %>
 </div>
+
+<% if (keverdEnabled && (mode === 'claim' || mode === 'signin')) { %>
+<script type="module">
+  (function () {
+    var publicKey = <%- JSON.stringify(keverdPublicKey) %>;
+    var statusEl = document.getElementById('keverd-status');
+    var eventInput = document.getElementById('eventId');
+    var visitorInput = document.getElementById('visitorId');
+    var form = document.getElementById('login-form');
+    var submitBtn = document.getElementById('login-submit');
+    var collectPromise = null;
+
+    function setStatus(text) {
+      if (statusEl) statusEl.textContent = text;
+    }
+
+    async function collect() {
+      if (!publicKey) return null;
+      var mod = await import('https://cdn.keverd.com/v1/' + encodeURIComponent(publicKey) + '/keverd.min.js');
+      var agent = await mod.start();
+      var result = await agent.getVisitorData();
+      var eventId = result.requestId || result.event_id || '';
+      var visitorId = result.visitorId || result.fingerprint || '';
+      if (eventInput) eventInput.value = eventId;
+      if (visitorInput) visitorInput.value = visitorId;
+      setStatus(visitorId ? ('Device check: ' + visitorId.slice(0, 18) + '…') : 'Device check ready');
+      return result;
+    }
+
+    collectPromise = collect().catch(function (err) {
+      console.warn('[keverd] collect failed', err);
+      setStatus('Device check skipped');
+      return null;
+    });
+
+    form.addEventListener('submit', function (e) {
+      if (eventInput.value) return;
+      e.preventDefault();
+      submitBtn.disabled = true;
+      setStatus('Checking device…');
+      Promise.resolve(collectPromise)
+        .then(function () {
+          if (!eventInput.value) return collect();
+        })
+        .catch(function () {})
+        .then(function () {
+          submitBtn.disabled = false;
+          form.submit();
+        });
+    });
+  })();
+</script>
+<% } %>

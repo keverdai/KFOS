@@ -3,6 +3,7 @@ const router = express.Router();
 
 const repo = require('../lib/repo');
 const auth = require('../lib/auth');
+const keverd = require('../lib/keverd');
 const { hashPassword, verifyPassword } = require('../lib/passwords');
 
 const MIN_PASSWORD_LENGTH = 8;
@@ -30,6 +31,8 @@ function renderLogin(req, res, overrides = {}) {
     mode,
     founder,
     minPasswordLength: MIN_PASSWORD_LENGTH,
+    keverdEnabled: keverd.enabled(),
+    keverdPublicKey: keverd.publicKey(),
   });
 }
 
@@ -38,12 +41,37 @@ router.get('/login', (req, res) => {
   renderLogin(req, res);
 });
 
-router.post('/login', (req, res) => {
+router.post('/login', async (req, res) => {
   const email = (req.body.email || '').trim();
   const password = req.body.password || '';
   const confirm = req.body.confirm || '';
   const mode = req.body.mode;
   const next = req.body.next || '';
+  const eventId = (req.body.eventId || '').trim();
+
+  // Observability + an optional hard gate, layered on top of per-founder
+  // login — never a replacement for it. A Keverd API error never blocks
+  // sign-in (fail open): the whole point right now is to see how this
+  // behaves against real traffic, not to risk locking everyone out over an
+  // outage on their end. An explicit "block" verdict is different — that's
+  // Keverd actively telling us not to trust this attempt, so it's honored.
+  if (keverd.enabled()) {
+    try {
+      const { risk, missingEventId } = await keverd.verifyLoginEvent(eventId);
+      if (missingEventId) {
+        console.warn('[keverd] login attempt without a device event', { email, mode });
+      }
+      if (risk && risk.action === 'block') {
+        return renderLogin(req, res, {
+          email,
+          next,
+          error: 'This sign-in was blocked by device risk checks.',
+        });
+      }
+    } catch (err) {
+      console.warn('[keverd] verify failed, continuing without it', err);
+    }
+  }
 
   if (!email) {
     return renderLogin(req, res, { email: '', error: 'Enter your email.' });
