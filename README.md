@@ -52,23 +52,28 @@ configurable rotation start date; see `src/lib/rotation.js`.
 
 ## What's in the app
 
-- **Today** (`/`) — today's pillar, session owner, overdue/upcoming
+- **Guide** (`/`) — lands here on open: what KFOS is, why it exists, the
+  rules, and what counts as evidence, all in one place.
+- **Today** (`/today`) — today's pillar, session owner, overdue/upcoming
   commitments, and each founder's logged hours so far today.
 - **Session** (`/sessions/:date`) — record the day's objective, discussion,
   and decisions, and turn decisions into commitments (owner, due date,
   Definition of Done).
 - **Commitments** (`/commitments`) — the single board of truth. Filter by
-  status/owner/pillar, update status with evidence attached.
+  status/owner/pillar, update status with evidence attached. Every
+  commitment records who logged it and who last updated its status.
 - **Daily Log** (`/daily-log`) — the Daily Founder Log: hours + evidence per
   pillar, biggest outcome, biggest problem, tomorrow's decision. Takes under
-  10 minutes.
+  10 minutes. You can only ever log or edit *your own* entry — see
+  **Founder accounts** below.
 - **Weekly Log** (`/weekly`) — auto-compiled Mon–Fri operating log with the
   weekly 🟢🟡🔴 pillar score.
 - **Scorecard** (`/scorecard`) — per-founder weekly view: hours vs. target,
   commitments delivered, evidence entries. Hours are one input, not the
   metric — someone can log 30 hours and deliver nothing.
-- **Settings** (`/settings`) — rename founders (seeded as CEO/CTO/COO),
-  company name, daily hour target, rotation start date, weekday→pillar map.
+- **Settings** (`/settings`) — your own account (email + password), rename
+  founders (seeded as CEO/CTO/COO), reset a teammate's password, company
+  name, daily hour target, rotation start date, weekday→pillar map.
 
 ## Running it locally (try it out first)
 
@@ -77,19 +82,10 @@ npm install
 npm start
 ```
 
-Then open http://localhost:3000 in your browser. Data is stored locally in
-`data/kfos.db` (SQLite, created automatically on first run — nothing to
-configure). No password is required in this mode — see **Password
-protection** below for when you're ready to put it on a shared URL.
-
-First thing to do: go to **Settings** and rename the three seeded founders
-(CEO/CTO/COO) to your actual names.
-
-To have all 3 of you try it on the same laptop before deploying anywhere,
-just take turns — switch founder in the top-right selector on Daily Log,
-or each open it in your own browser profile. The data is shared by
-whoever is running `npm start`; the other two aren't seeing live updates
-until it's actually hosted somewhere reachable (next section).
+Then open http://localhost:3000 in your browser — it'll redirect straight
+to **Sign in**. Data is stored locally in `data/kfos.db` (SQLite, created
+automatically on first run, seeded with three placeholder founders and
+placeholder emails — nothing else to configure).
 
 ### Environment variables
 
@@ -158,14 +154,18 @@ disk to survive.
 ## Project layout
 
 ```
-index.js              entrypoint
-src/app.js             Express app + view locals/helpers
-src/lib/pillars.js      the 5 pillars + default weekday mapping
-src/lib/rotation.js     date -> pillar / date -> session owner
-src/lib/db.js           SQLite schema + seed
-src/lib/settings.js     key/value settings helper
-src/lib/repo.js         data access (founders, sessions, commitments, daily_logs)
-src/routes/*            one file per section
-src/views/*             EJS templates
-public/css/style.css    styling
+index.js                entrypoint
+src/app.js               Express app + view locals/helpers
+src/lib/pillars.js        the 5 pillars + default weekday mapping
+src/lib/rotation.js       date -> pillar / date -> session owner
+src/lib/db.js             SQLite schema, migrations + seed
+src/lib/settings.js       key/value settings helper
+src/lib/passwords.js      scrypt password hashing
+src/lib/auth.js           session cookies, loadFounder/requireAuth, login throttling
+src/lib/repo.js           data access (founders, auth_sessions, sessions, commitments, daily_logs)
+src/routes/auth.js        /login, /logout
+src/routes/guide.js       landing page ('/')
+src/routes/*              one file per other section
+src/views/*               EJS templates
+public/css/style.css      styling
 ```

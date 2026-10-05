@@ -232,6 +232,28 @@ a:hover { color: var(--accent-hover); }
 
 .theme-toggle-icon { font-size: 0.9rem; line-height: 1; }
 
+.nav-whoami {
+  color: var(--topbar-fg-muted);
+  font-size: 0.8rem;
+  padding: 9px 4px;
+  white-space: nowrap;
+}
+.nav-whoami strong { color: var(--topbar-fg); }
+
+.nav-logout-form { display: inline-flex; }
+.nav-logout-btn {
+  background: transparent;
+  border: 1px solid var(--topbar-fg-muted);
+  color: var(--topbar-fg);
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+.nav-logout-btn:hover { border-color: var(--topbar-fg); }
+
 .nav-toggle {
   display: none;
   flex-direction: column;

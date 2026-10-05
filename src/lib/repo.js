@@ -17,6 +17,49 @@ const founders = {
   setActive(id, active) {
     db.prepare('UPDATE founders SET active = ? WHERE id = ?').run(active ? 1 : 0, id);
   },
+  getByEmail(email) {
+    if (!email) return undefined;
+    return db
+      .prepare('SELECT * FROM founders WHERE lower(email) = lower(?)')
+      .get(email.trim());
+  },
+  setEmail(id, email) {
+    db.prepare('UPDATE founders SET email = ? WHERE id = ?').run(email.trim(), id);
+  },
+  setPasswordHash(id, hash) {
+    db.prepare('UPDATE founders SET password_hash = ? WHERE id = ?').run(hash, id);
+  },
+  clearPassword(id) {
+    // Founder becomes "unclaimed" again — their next successful login sets
+    // a fresh password, same as first-time setup.
+    db.prepare('UPDATE founders SET password_hash = NULL WHERE id = ?').run(id);
+  },
+};
+
+// ---- Auth sessions ----
+const authSessions = {
+  create(token, founderId, expiresAt) {
+    db.prepare(
+      'INSERT INTO auth_sessions (token, founder_id, expires_at) VALUES (?, ?, ?)'
+    ).run(token, founderId, expiresAt);
+  },
+  getWithFounder(token) {
+    return db
+      .prepare(
+        `SELECT auth_sessions.token, auth_sessions.expires_at,
+                founders.id AS founder_id, founders.name, founders.role,
+                founders.email, founders.active
+         FROM auth_sessions JOIN founders ON founders.id = auth_sessions.founder_id
+         WHERE auth_sessions.token = ?`
+      )
+      .get(token);
+  },
+  delete(token) {
+    db.prepare('DELETE FROM auth_sessions WHERE token = ?').run(token);
+  },
+  deleteExpired() {
+    db.prepare("DELETE FROM auth_sessions WHERE expires_at < datetime('now')").run();
+  },
 };
 
 // ---- Sessions ----
@@ -27,19 +70,19 @@ const sessions = {
   getById(id) {
     return db.prepare('SELECT * FROM sessions WHERE id = ?').get(id);
   },
-  upsert({ date, pillar, owner_founder_id, objective, discussion, decisions }) {
+  upsert({ date, pillar, owner_founder_id, objective, discussion, decisions, updated_by_founder_id }) {
     const existing = sessions.getByDate(date);
     if (existing) {
       db.prepare(
-        `UPDATE sessions SET pillar = ?, owner_founder_id = ?, objective = ?, discussion = ?, decisions = ?, updated_at = datetime('now')
+        `UPDATE sessions SET pillar = ?, owner_founder_id = ?, objective = ?, discussion = ?, decisions = ?, updated_by_founder_id = ?, updated_at = datetime('now')
          WHERE id = ?`
-      ).run(pillar, owner_founder_id, objective, discussion, decisions, existing.id);
+      ).run(pillar, owner_founder_id, objective, discussion, decisions, updated_by_founder_id || null, existing.id);
       return sessions.getById(existing.id);
     }
     const info = db
       .prepare(
-        `INSERT INTO sessions (date, pillar, owner_founder_id, objective, discussion, decisions)
-         VALUES (?, ?, ?, ?, ?, ?)`
+        `INSERT INTO sessions (date, pillar, owner_founder_id, objective, discussion, decisions, updated_by_founder_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`
       )
       .run(date, pillar, owner_founder_id, objective, discussion, decisions);
     return sessions.getById(Number(info.lastInsertRowid));
@@ -56,11 +99,11 @@ const sessions = {
 
 // ---- Commitments ----
 const commitments = {
-  create({ session_id, pillar, description, definition_of_done, owner_founder_id, due_date }) {
+  create({ session_id, pillar, description, definition_of_done, owner_founder_id, due_date, created_by_founder_id }) {
     const info = db
       .prepare(
-        `INSERT INTO commitments (session_id, pillar, description, definition_of_done, owner_founder_id, due_date)
-         VALUES (?, ?, ?, ?, ?, ?)`
+        `INSERT INTO commitments (session_id, pillar, description, definition_of_done, owner_founder_id, due_date, created_by_founder_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`
       )
       .run(session_id || null, pillar, description, definition_of_done || '', owner_founder_id || null, due_date || null);
     return commitments.getById(Number(info.lastInsertRowid));
@@ -68,10 +111,10 @@ const commitments = {
   getById(id) {
     return db.prepare('SELECT * FROM commitments WHERE id = ?').get(id);
   },
-  updateStatus(id, status, evidence, status_note) {
+  updateStatus(id, status, evidence, status_note, status_updated_by_founder_id) {
     db.prepare(
-      `UPDATE commitments SET status = ?, evidence = ?, status_note = ?, updated_at = datetime('now') WHERE id = ?`
-    ).run(status, evidence || '', status_note || '', id);
+      `UPDATE commitments SET status = ?, evidence = ?, status_note = ?, status_updated_by_founder_id = ?, updated_at = datetime('now') WHERE id = ?`
+    ).run(status, evidence || '', status_note || '', status_updated_by_founder_id || null, id);
   },
   update(id, { description, definition_of_done, owner_founder_id, due_date, pillar }) {
     db.prepare(
@@ -218,4 +261,4 @@ const dailyLogs = {
   },
 };
 
-module.exports = { founders, sessions, commitments, dailyLogs };
+module.exports = { founders, authSessions, sessions, commitments, dailyLogs };

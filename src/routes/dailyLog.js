@@ -8,9 +8,10 @@ const { PILLARS } = require('../lib/pillars');
 
 router.get('/', (req, res) => {
   const date = req.query.date || rotation.todayStr();
-  const founders = repo.founders.all(true);
-  const selectedFounderId = Number(req.query.founder) || (founders[0] && founders[0].id);
-  const existing = repo.dailyLogs.getByDateFounder(date, selectedFounderId);
+  // You can only ever edit your own log — identity comes from the signed-in
+  // session, not a dropdown. (Everyone's entries are still visible below,
+  // in the read-only history table.)
+  const existing = repo.dailyLogs.getByDateFounder(date, req.founder.id);
   const history = repo.dailyLogs.inRange(rotation.addDays(date, -13), date);
   const hourTarget = Number(settings.get('daily_hour_target', '6'));
 
@@ -18,8 +19,6 @@ router.get('/', (req, res) => {
     title: 'Daily Founder Log',
     active: 'daily-log',
     date,
-    founders,
-    selectedFounderId,
     existing,
     history,
     hourTarget,
@@ -68,7 +67,7 @@ router.post('/', (req, res) => {
     decision_tomorrow: b.decision_tomorrow || '',
   };
   repo.dailyLogs.upsert(entry);
-  res.redirect(`/daily-log?date=${entry.date}&founder=${entry.founder_id}&flash=Log saved`);
+  res.redirect(`/daily-log?date=${entry.date}&flash=Log saved`);
 });
 
 module.exports = router;

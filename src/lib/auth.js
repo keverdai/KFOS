@@ -133,6 +133,8 @@ function requireAuth(req, res, next) {
     clearSession(res);
     return res.redirect('/login');
   }
+  failedAttempts.set(key, entry);
+}
 
   const user = sessionUser(req);
   if (user) {

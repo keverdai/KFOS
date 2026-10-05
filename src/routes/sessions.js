@@ -7,11 +7,15 @@ const { getPillar, allPillarsIncludingPriority } = require('../lib/pillars');
 
 function loadSessionPage(date, res, title) {
   const founders = repo.founders.all(true);
+  const allFoundersEverActive = repo.founders.all();
   const pillarKey = rotation.getPillarKeyForDate(date);
   const owner = rotation.getOwnerForDate(date, founders);
   const session = repo.sessions.getByDate(date);
   const commitments = session ? repo.commitments.bySession(session.id) : [];
   const pillar = pillarKey ? getPillar(pillarKey) : null;
+  const lastSavedBy = session
+    ? allFoundersEverActive.find((f) => f.id === session.updated_by_founder_id)
+    : null;
 
   res.render('session', {
     title: title || `Session · ${date}`,
@@ -21,6 +25,8 @@ function loadSessionPage(date, res, title) {
     owner,
     session,
     founders,
+    allFoundersEverActive,
+    lastSavedBy,
     commitments,
     isWeekend: rotation.isWeekend(date),
     allPillars: allPillarsIncludingPriority(),
@@ -44,6 +50,7 @@ router.post('/:date', (req, res) => {
     objective: req.body.objective || '',
     discussion: req.body.discussion || '',
     decisions: req.body.decisions || '',
+    updated_by_founder_id: req.founder.id,
   });
 
   res.redirect(`/sessions/${date}?flash=Session saved`);
@@ -69,6 +76,7 @@ router.post('/:date/commitments', (req, res) => {
       objective: '',
       discussion: '',
       decisions: '',
+      updated_by_founder_id: req.founder.id,
     });
   }
 
@@ -79,6 +87,7 @@ router.post('/:date/commitments', (req, res) => {
     definition_of_done: req.body.definition_of_done,
     owner_founder_id: req.body.owner_founder_id || null,
     due_date: req.body.due_date || null,
+    created_by_founder_id: req.founder.id,
   });
 
   res.redirect(`/sessions/${date}?flash=Commitment added`);

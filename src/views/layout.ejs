@@ -33,13 +33,19 @@
       </button>
 
       <nav id="site-nav">
-        <a href="/guide" class="<%= active === 'guide' ? 'active' : '' %>">Guide</a>
-        <a href="/today" class="<%= active === 'today' ? 'active' : '' %>">Today</a>
-        <a href="/commitments" class="<%= active === 'commitments' ? 'active' : '' %>">Commitments</a>
-        <a href="/daily-log" class="<%= active === 'daily-log' ? 'active' : '' %>">Daily Log</a>
-        <a href="/weekly" class="<%= active === 'weekly' ? 'active' : '' %>">Weekly Log</a>
-        <a href="/scorecard" class="<%= active === 'scorecard' ? 'active' : '' %>">Scorecard</a>
-        <a href="/settings" class="<%= active === 'settings' ? 'active' : '' %>">Settings</a>
+        <% if (typeof currentFounder !== 'undefined' && currentFounder) { %>
+          <a href="/guide" class="<%= active === 'guide' ? 'active' : '' %>">Guide</a>
+          <a href="/today" class="<%= active === 'today' ? 'active' : '' %>">Today</a>
+          <a href="/commitments" class="<%= active === 'commitments' ? 'active' : '' %>">Commitments</a>
+          <a href="/daily-log" class="<%= active === 'daily-log' ? 'active' : '' %>">Daily Log</a>
+          <a href="/weekly" class="<%= active === 'weekly' ? 'active' : '' %>">Weekly Log</a>
+          <a href="/scorecard" class="<%= active === 'scorecard' ? 'active' : '' %>">Scorecard</a>
+          <a href="/settings" class="<%= active === 'settings' ? 'active' : '' %>">Settings</a>
+          <span class="nav-whoami">Signed in as <strong><%= currentFounder.name %></strong> (<%= currentFounder.role %>)</span>
+          <form method="post" action="/logout" class="nav-logout-form">
+            <button type="submit" class="nav-logout-btn">Log out</button>
+          </form>
+        <% } %>
         <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Toggle light/dark theme">
           <span class="theme-toggle-icon" aria-hidden="true"></span>
           <span class="theme-toggle-label">Theme</span>
